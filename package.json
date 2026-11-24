@@ -1,0 +1,28 @@
+{
+  "name": "code-clash-backend",
+  "version": "1.0.0",
+  "description": "Real-time competitive programming matchmaking and battle engine for Code Clash",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@supabase/supabase-js": "^2.43.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "lucide-react": "^1.70.0",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.8.4",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.6.2",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^4.3.5"
+  }
+}
