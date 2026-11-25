@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
-const API_BASE_URL = API_URL;
 
 export default function Arena({
   roomId: propRoomCode,
@@ -68,7 +67,7 @@ export default function Arena({
   // Room lifecycle status: 'loading' | 'waiting' | 'active' | 'finished' | 'error'
   const [status, setStatus] = useState('loading');
   const [remainingSeconds, setRemainingSeconds] = useState(900);
-  const [durationSeconds, setDurationSeconds] = useState(900);
+  const [, setDurationSeconds] = useState(900);
 
   // Participants & Leaderboard
   const [participants, setParticipants] = useState([]);

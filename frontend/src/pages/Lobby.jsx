@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
-const API_BASE_URL = API_URL;
 
 const DEFAULT_PYTHON_STARTER = `def solution(nums, target):
     # Python 3 həllinizi buraya yazın

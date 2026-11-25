@@ -12,14 +12,21 @@ import {
 } from 'lucide-react';
 
 export default function Auth() {
+  const isRedirecting =
+    typeof window !== 'undefined' &&
+    window.location.hash &&
+    window.location.hash.includes('access_token=');
+
   const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(isRedirecting);
   const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState(
+    isRedirecting ? 'Giriş təsdiqlənir, zəhmət olmasa gözləyin...' : ''
+  );
 
   // ---------------------------------------------------------------------------
   // ERROR TRANSLATION HELPER (AZERBAIJANI)
@@ -53,10 +60,15 @@ export default function Auth() {
       setSuccessMsg('');
       setGoogleLoading(true);
 
+      const redirectUrl =
+        typeof window !== 'undefined' && window.location.origin
+          ? window.location.origin
+          : 'https://codeclash.online';
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectUrl,
         },
       });
 

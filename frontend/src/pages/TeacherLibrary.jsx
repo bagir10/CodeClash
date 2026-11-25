@@ -8,15 +8,12 @@ import {
   CheckCircle2,
   Code2,
   Sparkles,
-  HelpCircle,
-  FileCode,
   Layers,
   Send,
   AlertCircle,
 } from 'lucide-react';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
-const API_BASE_URL = API_URL;
 
 const STARTER_PYTHON_CODE = `def solution(nums, target):
     # Write your Python 3 algorithm here
