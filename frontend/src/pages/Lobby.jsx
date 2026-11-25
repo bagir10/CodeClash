@@ -17,6 +17,7 @@ import {
   ChevronUp,
   LogOut,
   Code2,
+  Zap,
 } from 'lucide-react';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
@@ -62,6 +63,7 @@ export default function Lobby() {
   // 2. CARD 1: 1VS1 OTAQ QUR
   // ---------------------------------------------------------------------------
   const [isCreating1v1, setIsCreating1v1] = useState(false);
+  const [duelLength, setDuelLength] = useState('blitz'); // 'blitz' (3 questions / 15m) or 'classic' (5 questions / 25m)
 
   const handleCreate1v1Room = async () => {
     try {
@@ -72,6 +74,7 @@ export default function Lobby() {
         body: JSON.stringify({
           mode: '1v1',
           creator_id: user.id,
+          matchLength: duelLength,
         }),
       });
 
@@ -176,6 +179,33 @@ export default function Lobby() {
 
   const handleRemoveQuestionFromTournament = (index) => {
     setTournamentQuestions((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddFromQuestionBank = async (count = 3) => {
+    try {
+      const res = await fetch(`${API_URL}/api/questions`);
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.questions) && data.questions.length > 0) {
+        const existingTitles = new Set(tournamentQuestions.map((q) => q.title));
+        const available = data.questions.filter((q) => !existingTitles.has(q.title));
+        const pool = available.length >= count ? available : data.questions;
+
+        const shuffled = [...pool].sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, count).map((q) => ({
+          title: q.title,
+          problem_statement: q.problem_statement,
+          base_code: q.starter_code || q.base_code || DEFAULT_PYTHON_STARTER,
+          test_cases: Array.isArray(q.test_cases) && q.test_cases.length > 0
+            ? q.test_cases
+            : (q.visible_tests || []),
+        }));
+        setTournamentQuestions((prev) => [...prev, ...selected]);
+      } else {
+        alert('Sual bankından suallar yüklənə bilmədi.');
+      }
+    } catch (e) {
+      alert('Sual bankına qoşularkən xəta baş verdi.');
+    }
   };
 
   const handleCreateTournament = async () => {
@@ -293,26 +323,57 @@ export default function Lobby() {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-white">1vs1 Otaq Qur</h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-700/50 font-bold">
-                  15 DƏQ • 3 SUAL
+                  {duelLength === 'classic' ? '25 DƏQ • 5 SUAL' : '15 DƏQ • 3 SUAL'}
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-2.5 leading-relaxed">
-                1v1 otaq yaradın və 6 simvollu kod əldə edin. Rəqib koda daxil olan kimi yarış 15
-                dəqiqəlik taymer və 3 Python sualı ilə avtomatik başlayacaq.
+                1v1 duel otağı yaradın və kodu rəqiblə bölüşün. Formatı seçin (Blitz və ya Klassik) — rəqib daxil olan kimi yarış avtomatik başlayacaq.
               </p>
 
-              <div className="mt-5 bg-[#111827] border border-gray-800/80 rounded-xl p-3 space-y-1 text-xs font-mono text-gray-400">
+              {/* Match Length Selector */}
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDuelLength('blitz')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-mono font-bold transition-all flex flex-col items-center justify-center space-y-0.5 ${
+                    duelLength === 'blitz'
+                      ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-950/40'
+                      : 'bg-[#111827] border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+                  }`}
+                >
+                  <span className="text-white text-[11px]">⚡ 3 Sual (Blitz)</span>
+                  <span className="text-[10px] text-cyan-400/80">15 dəqiqə</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDuelLength('classic')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-mono font-bold transition-all flex flex-col items-center justify-center space-y-0.5 ${
+                    duelLength === 'classic'
+                      ? 'bg-blue-950/80 border-blue-500 text-blue-300 shadow-md shadow-blue-950/40'
+                      : 'bg-[#111827] border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+                  }`}
+                >
+                  <span className="text-white text-[11px]">🏆 5 Sual (Klassik)</span>
+                  <span className="text-blue-400/80">25 dəqiqə</span>
+                </button>
+              </div>
+
+              <div className="mt-4 bg-[#111827] border border-gray-800/80 rounded-xl p-3 space-y-1 text-xs font-mono text-gray-400">
                 <div className="flex items-center justify-between text-[11px]">
                   <span>Oyunçu sayı:</span>
                   <strong className="text-cyan-300">2 Oyunçu</strong>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
-                  <span>Suallar:</span>
-                  <strong className="text-cyan-300">3 Python Alqoritmi</strong>
+                  <span>Format:</span>
+                  <strong className="text-cyan-300">
+                    {duelLength === 'classic' ? '5 Sual (Klassik)' : '3 Sual (Blitz)'}
+                  </strong>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
                   <span>Müddət:</span>
-                  <strong className="text-cyan-300">15 Dəqiqə (900s)</strong>
+                  <strong className="text-cyan-300">
+                    {duelLength === 'classic' ? '25 Dəqiqə (1500s)' : '15 Dəqiqə (900s)'}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -440,6 +501,30 @@ export default function Lobby() {
                   onChange={(e) => setDurationMinutes(e.target.value)}
                   className="w-16 bg-[#111827] border border-gray-700 rounded px-2 py-1 text-center text-white font-bold"
                 />
+              </div>
+            </div>
+
+            {/* Quick Sual Bankından Əlavə Et Buttons */}
+            <div className="mt-4 p-3.5 bg-purple-950/30 border border-purple-500/20 rounded-xl flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center space-x-2 text-xs font-mono text-purple-200">
+                <Zap className="w-4 h-4 text-purple-400 shrink-0" />
+                <span>Rəsmi Sual Bankından (30 sual) turnirə sual yüklə:</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleAddFromQuestionBank(3)}
+                  className="px-3 py-1.5 rounded-lg bg-purple-900/60 hover:bg-purple-800 border border-purple-500/40 text-purple-200 text-xs font-mono font-bold transition-all"
+                >
+                  + 3 Sual (Blitz)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddFromQuestionBank(5)}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-900/60 hover:bg-indigo-800 border border-indigo-500/40 text-indigo-200 text-xs font-mono font-bold transition-all"
+                >
+                  + 5 Sual (Klassik)
+                </button>
               </div>
             </div>
 

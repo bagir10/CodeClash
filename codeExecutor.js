@@ -14,7 +14,38 @@ import io
 import json
 import subprocess
 import sys
+import time
 import traceback
+
+BLOCKED_MODULES = {
+    'os', 'sys', 'subprocess', 'socket', 'shutil', 'pty', 'commands',
+    'threading', 'multiprocessing', 'posix', 'nt', '_posixsubprocess',
+    'resource', 'ctypes', 'winreg'
+}
+
+def check_security(tree):
+    for node in ast.walk(tree):
+        # 1. import os, sys, etc.
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root_module = alias.name.split('.')[0]
+                if root_module in BLOCKED_MODULES:
+                    return False, f"Təhlükəsizlik xətası: '{root_module}' modulunun istifadəsinə icazə verilmir."
+        # 2. from os import path, etc.
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                root_module = node.module.split('.')[0]
+                if root_module in BLOCKED_MODULES:
+                    return False, f"Təhlükəsizlik xətası: '{root_module}' modulunun istifadəsinə icazə verilmir."
+        # 3. eval(), exec(), __import__(), compile()
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name):
+                if node.func.id in ('eval', 'exec', '__import__', 'compile'):
+                    return False, f"Təhlükəsizlik xətası: '{node.func.id}()' funksiyasının çağırılmasına icazə verilmir."
+            elif isinstance(node.func, ast.Attribute):
+                if node.func.attr in ('__subclasses__', '__bases__', '__mro__'):
+                    return False, "Təhlükəsizlik xətası: Qadağan olunmuş daxili atribut müraciəti."
+    return True, None
 
 def normalize_text(s):
     if s is None:
@@ -146,7 +177,10 @@ def main():
         print(json.dumps({
             'isCorrect': False,
             'output': '(arqumentlər çatışmır)',
-            'error': 'İcraçı fayl arqumentləri düzgün verilməyib.'
+            'error': 'İcraçı fayl arqumentləri düzgün verilməyib.',
+            'totalPassedTests': 0,
+            'totalTests': 0,
+            'testResults': []
         }))
         return
 
@@ -160,7 +194,10 @@ def main():
         print(json.dumps({
             'isCorrect': False,
             'output': '',
-            'error': f'Mənbə kodu oxunarkən xəta: {e}'
+            'error': f'Mənbə kodu oxunarkən xəta: {e}',
+            'totalPassedTests': 0,
+            'totalTests': 0,
+            'testResults': []
         }))
         return
 
@@ -173,14 +210,30 @@ def main():
     if not isinstance(test_cases, list):
         test_cases = []
 
-    # 1. Syntax check
+    # 1. Syntax check & Security AST inspection
     try:
         tree = ast.parse(source, filename=user_file)
     except SyntaxError as e:
         print(json.dumps({
             'isCorrect': False,
             'output': '(sintaksis xətasına görə kod icra olunmadı)',
-            'error': f'Sintaksis xətası (Sətir {e.lineno}): {e.msg}'
+            'error': f'Sintaksis xətası (Sətir {e.lineno}): {e.msg}',
+            'totalPassedTests': 0,
+            'totalTests': len(test_cases),
+            'testResults': []
+        }))
+        return
+
+    # Check security constraints
+    sec_ok, sec_err = check_security(tree)
+    if not sec_ok:
+        print(json.dumps({
+            'isCorrect': False,
+            'output': '(təhlükəsizlik qaydası pozuldu)',
+            'error': sec_err,
+            'totalPassedTests': 0,
+            'totalTests': len(test_cases),
+            'testResults': []
         }))
         return
 
@@ -193,7 +246,14 @@ def main():
 
     func_defs = [node.name for node in tree.body if isinstance(node, ast.FunctionDef)]
 
+    test_results = []
+    all_passed = True
+    first_error_msg = None
+    last_display = ''
+
+    # =========================================================================
     # REJİM 1: Funksiya əsaslı yoxlama (LeetCode stili)
+    # =========================================================================
     if func_defs and not uses_input:
         buf = io.StringIO()
         try:
@@ -205,7 +265,10 @@ def main():
             print(json.dumps({
                 'isCorrect': False,
                 'output': buf.getvalue().strip() or '(çıxış yoxdur)',
-                'error': traceback.format_exc(limit=3)
+                'error': traceback.format_exc(limit=3),
+                'totalPassedTests': 0,
+                'totalTests': len(test_cases),
+                'testResults': []
             }))
             return
 
@@ -218,32 +281,46 @@ def main():
         except Exception:
             param_count = 1
 
-        last_display = ''
-
         if not test_cases:
             print(json.dumps({
                 'isCorrect': True,
                 'output': buf.getvalue().strip() or 'Funksiya xətasız yükləndi.',
-                'error': None
+                'error': None,
+                'totalPassedTests': 0,
+                'totalTests': 0,
+                'testResults': []
             }))
             return
 
         for idx, tc in enumerate(test_cases):
             raw_in = tc.get('input', '')
             expected = tc.get('expected_output', tc.get('expectedOutput'))
+            is_hidden = bool(tc.get('isHidden', False))
             args = parse_args_for_func(raw_in, param_count)
             call_buf = io.StringIO()
+
+            t0 = time.perf_counter()
             try:
                 with contextlib.redirect_stdout(call_buf):
                     res = fn(*args)
+                tc_time_ms = max(1, round((time.perf_counter() - t0) * 1000))
             except Exception:
+                tc_time_ms = max(1, round((time.perf_counter() - t0) * 1000))
                 printed = '\\n'.join(filter(None, [buf.getvalue().strip(), call_buf.getvalue().strip()]))
-                print(json.dumps({
-                    'isCorrect': False,
-                    'output': printed or '(çıxış yoxdur)',
-                    'error': f'Test #{idx + 1} icra xətası:\\n{traceback.format_exc(limit=3)}'
-                }))
-                return
+                all_passed = False
+                err_text = f'Test #{idx + 1} icra xətası:\\n{traceback.format_exc(limit=3)}'
+                if not first_error_msg:
+                    first_error_msg = err_text
+                test_results.append({
+                    'testNum': idx + 1,
+                    'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
+                    'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
+                    'actual': printed or '(icra xətası)',
+                    'passed': False,
+                    'executionTimeMs': tc_time_ms,
+                    'isHidden': is_hidden,
+                })
+                break
 
             printed = '\\n'.join(filter(None, [buf.getvalue().strip(), call_buf.getvalue().strip()]))
 
@@ -252,7 +329,7 @@ def main():
                 out_parts.append(f'Print: {printed}')
             if res is not None:
                 out_parts.append(f'Return: {repr(res)}')
-            last_display = '\\n'.join(out_parts) if out_parts else '(heç nə qaytarılmayıb / print edilməyib)'
+            last_display = '\\n'.join(out_parts) if out_parts else '(heç nə qaytarılmayıb)'
 
             matched = False
             if expected is not None:
@@ -263,30 +340,50 @@ def main():
             else:
                 matched = True
 
-            if not matched:
-                actual_show = repr(res) if res is not None else (printed if printed else 'None')
-                print(json.dumps({
-                    'isCorrect': False,
-                    'output': last_display,
-                    'error': f'Test #{idx + 1} uyğun gəlmədi.\\nGiriş: {raw_in}\\nGözlənilən: {expected}\\nSənin nəticən: {actual_show}'
-                }))
-                return
+            actual_show = repr(res) if res is not None else (printed if printed else 'None')
 
+            test_results.append({
+                'testNum': idx + 1,
+                'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
+                'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
+                'actual': str(actual_show) if (matched or not is_hidden) else "(Gizli test nəticəsi gizlədildi)",
+                'passed': matched,
+                'executionTimeMs': tc_time_ms,
+                'isHidden': is_hidden,
+            })
+
+            if not matched:
+                all_passed = False
+                if not first_error_msg:
+                    if is_hidden:
+                        first_error_msg = f'Gizli Test #{idx + 1} uyğun gəlmədi (Giriş və çıxış məlumatları gizlidir).'
+                    else:
+                        first_error_msg = f'Test #{idx + 1} uyğun gəlmədi.\\nGiriş: {raw_in}\\nGözlənilən: {expected}\\nSənin nəticən: {actual_show}'
+                break
+
+        passed_count = sum(1 for t in test_results if t['passed'])
         print(json.dumps({
-            'isCorrect': True,
-            'output': f'Bütün testlər keçdi ({len(test_cases)}/{len(test_cases)})!\\n{last_display}',
-            'error': None
+            'isCorrect': all_passed and passed_count == len(test_cases),
+            'output': f'Testlər: {passed_count}/{len(test_cases)} keçdi!\\n{last_display}' if all_passed else last_display,
+            'error': first_error_msg,
+            'totalPassedTests': passed_count,
+            'totalTests': len(test_cases),
+            'testResults': test_results,
         }))
         return
 
-    # REJİM 2: Standart input() / print() yoxlaması (Codeforces / Competitive Programming)
-    last_out = ''
+    # =========================================================================
+    # REJİM 2: Standart input() / print() yoxlaması (Competitive Programming)
+    # =========================================================================
     if not test_cases:
         test_cases = [{'input': '', 'expected_output': None}]
 
     for idx, tc in enumerate(test_cases):
         raw_in = str(tc.get('input', ''))
         expected = tc.get('expected_output', tc.get('expectedOutput'))
+        is_hidden = bool(tc.get('isHidden', False))
+
+        t0 = time.perf_counter()
         try:
             proc = subprocess.run(
                 [sys.executable, user_file],
@@ -297,58 +394,133 @@ def main():
                 encoding='utf-8',
                 errors='replace'
             )
+            tc_time_ms = max(1, round((time.perf_counter() - t0) * 1000))
         except subprocess.TimeoutExpired:
-            print(json.dumps({
-                'isCorrect': False,
-                'output': '(vaxt limiti aşılıb)',
-                'error': f'Test #{idx + 1}: Vaxt limiti aşıldı (Time Limit Exceeded).'
-            }))
-            return
+            all_passed = False
+            first_error_msg = f'Test #{idx + 1}: Vaxt limiti aşıldı (Time Limit Exceeded - 3.0s).'
+            test_results.append({
+                'testNum': idx + 1,
+                'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
+                'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
+                'actual': '(vaxt limiti aşılıb)',
+                'passed': False,
+                'executionTimeMs': 3000,
+                'isHidden': is_hidden,
+            })
+            break
         except Exception as e:
-            print(json.dumps({
-                'isCorrect': False,
-                'output': '(icra xətası)',
-                'error': f'Test #{idx + 1} başlana bilmədi: {e}'
-            }))
-            return
+            all_passed = False
+            first_error_msg = f'Test #{idx + 1} başlana bilmədi: {e}'
+            test_results.append({
+                'testNum': idx + 1,
+                'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
+                'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
+                'actual': '(icra xətası)',
+                'passed': False,
+                'executionTimeMs': 1,
+                'isHidden': is_hidden,
+            })
+            break
 
         last_out = proc.stdout.strip()
         if proc.returncode != 0:
+            all_passed = False
             err_msg = proc.stderr.strip() or 'İcra zamanı xəta baş verdi.'
-            print(json.dumps({
-                'isCorrect': False,
-                'output': last_out or '(çıxış yoxdur)',
-                'error': f'Test #{idx + 1} icra xətası:\\n{err_msg}'
-            }))
-            return
+            first_error_msg = f'Test #{idx + 1} icra xətası:\\n{err_msg}'
+            test_results.append({
+                'testNum': idx + 1,
+                'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
+                'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
+                'actual': last_out or '(xəta baş verdi)',
+                'passed': False,
+                'executionTimeMs': tc_time_ms,
+                'isHidden': is_hidden,
+            })
+            break
 
+        matched = True
         if expected is not None and not values_equal(last_out, expected):
-            print(json.dumps({
-                'isCorrect': False,
-                'output': last_out or '(çıxış yoxdur)',
-                'error': f'Test #{idx + 1} uyğun gəlmədi.\\nGiriş: {raw_in}\\nGözlənilən: {expected}\\nSənin nəticən: {last_out}'
-            }))
-            return
+            matched = False
+            all_passed = False
+            if not first_error_msg:
+                if is_hidden:
+                    first_error_msg = f'Gizli Test #{idx + 1} uyğun gəlmədi (Giriş və çıxış məlumatları gizlidir).'
+                else:
+                    first_error_msg = f'Test #{idx + 1} uyğun gəlmədi.\\nGiriş: {raw_in}\\nGözlənilən: {expected}\\nSənin nəticən: {last_out}'
 
+        test_results.append({
+            'testNum': idx + 1,
+            'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
+            'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
+            'actual': last_out if (matched or not is_hidden) else "(Gizli test nəticəsi gizlədildi)",
+            'passed': matched,
+            'executionTimeMs': tc_time_ms,
+            'isHidden': is_hidden,
+        })
+
+        if not matched:
+            break
+
+    passed_count = sum(1 for t in test_results if t['passed'])
     print(json.dumps({
-        'isCorrect': True,
-        'output': f'Bütün testlər keçdi ({len(test_cases)}/{len(test_cases)})!\\n{last_out}',
-        'error': None
+        'isCorrect': all_passed and passed_count == len(test_cases),
+        'output': f'Testlər: {passed_count}/{len(test_cases)} keçdi!\\n{last_out}' if all_passed else (last_out or '(çıxış yoxdur)'),
+        'error': first_error_msg,
+        'totalPassedTests': passed_count,
+        'totalTests': len(test_cases),
+        'testResults': test_results,
     }))
 
 if __name__ == '__main__':
     main()
 `;
 
+// =============================================================================
+// ASYNC PYTHON EXECUTION QUEUE (CONCURRENCY LIMITER)
+// Limits simultaneous active Python child processes to a maximum of 3.
+// Crucial for 512MB RAM instances (e.g. Render free tier) with 30 concurrent users.
+// Additional requests wait safely in the queue without crashing RAM or causing false TLEs.
+// =============================================================================
+const MAX_CONCURRENT_EXECUTIONS = 3;
+let activeProcessCount = 0;
+const executionQueue = [];
+
+function pumpQueue() {
+    while (activeProcessCount < MAX_CONCURRENT_EXECUTIONS && executionQueue.length > 0) {
+        const item = executionQueue.shift();
+        if (!item) break;
+        activeProcessCount++;
+
+        Promise.resolve()
+            .then(() => item.task())
+            .then(item.resolve)
+            .catch(item.reject)
+            .finally(() => {
+                activeProcessCount--;
+                pumpQueue();
+            });
+    }
+}
+
+function enqueueExecution(task) {
+    return new Promise((resolve, reject) => {
+        executionQueue.push({ task, resolve, reject });
+        pumpQueue();
+    });
+}
+
+export function getExecutionQueueStats() {
+    return {
+        active: activeProcessCount,
+        queued: executionQueue.length,
+        maxConcurrent: MAX_CONCURRENT_EXECUTIONS,
+    };
+}
+
 /**
- * Executes Python code against a set of test cases.
- * Handles both function-based LeetCode style and competitive programming stdin/stdout style.
- *
- * @param {string|object} codeOrPayload - The Python source code string, or an object containing code and testCases
- * @param {Array|string} [rawTestCases=[]] - Array of test case objects [{ input, expectedOutput }]
- * @returns {Promise<{ isCorrect: boolean, executionTimeMs: number, output: string, error: string|null }>}
+ * Internal single Python process execution with AST check, temp sandbox & 3s timeout.
  */
-export async function executePythonCode(codeOrPayload, rawTestCases = []) {
+async function _runPythonProcess(codeOrPayload, rawTestCases = []) {
     let code = '';
     let testCases = rawTestCases;
 
@@ -402,6 +574,7 @@ export async function executePythonCode(codeOrPayload, rawTestCases = []) {
             let stdout = '';
             let stderr = '';
 
+            // Strict 3.2s kill timeout (enforces 3s limit)
             const timer = setTimeout(() => {
                 if (settled) return;
                 settled = true;
@@ -410,14 +583,25 @@ export async function executePythonCode(codeOrPayload, rawTestCases = []) {
                 } catch {
                     child.kill();
                 }
-                const executionTimeMs = Math.max(1, Math.round(performance.now() - startTime));
+                const executionTimeMs = 3000;
                 resolve({
                     isCorrect: false,
                     executionTimeMs,
                     output: '(vaxt limiti aşılıb)',
-                    error: 'Kodun ümumi icra müddəti limiti aşdı (Time Limit Exceeded).'
+                    error: 'İcra müddəti limiti aşıldı (Time Limit Exceeded - 3 saniyə). Sonsuz dövr (infinite loop) və ya ağır hesablama aşkar edildi.',
+                    totalPassedTests: 0,
+                    totalTests: parsedCases.length,
+                    testResults: parsedCases.map((tc, idx) => ({
+                        testNum: idx + 1,
+                        input: tc.isHidden ? '(Gizli Test)' : String(tc.input || ''),
+                        expected: tc.isHidden ? '(Gizli Test)' : String(tc.expectedOutput || tc.expected_output || ''),
+                        actual: '(vaxt limiti aşılıb)',
+                        passed: false,
+                        executionTimeMs: 3000,
+                        isHidden: Boolean(tc.isHidden),
+                    })),
                 });
-            }, 7500);
+            }, 3500);
 
             child.stdout.on('data', (chunk) => {
                 stdout += chunk.toString();
@@ -436,7 +620,10 @@ export async function executePythonCode(codeOrPayload, rawTestCases = []) {
                     isCorrect: false,
                     executionTimeMs,
                     output: '(icra mühiti xətası)',
-                    error: `Python işə salına bilmədi: ${err.message}`
+                    error: `Python işə salına bilmədi: ${err.message}`,
+                    totalPassedTests: 0,
+                    totalTests: parsedCases.length,
+                    testResults: [],
                 });
             });
 
@@ -452,13 +639,16 @@ export async function executePythonCode(codeOrPayload, rawTestCases = []) {
                         const parsed = JSON.parse(trimmedOut);
                         resolve({
                             isCorrect: Boolean(parsed.isCorrect),
-                            executionTimeMs,
+                            executionTimeMs: typeof parsed.executionTimeMs === 'number' ? parsed.executionTimeMs : executionTimeMs,
                             output: typeof parsed.output === 'string' ? parsed.output : '(çıxış yoxdur)',
                             error: parsed.error ? String(parsed.error) : null,
+                            totalPassedTests: typeof parsed.totalPassedTests === 'number' ? parsed.totalPassedTests : 0,
+                            totalTests: typeof parsed.totalTests === 'number' ? parsed.totalTests : parsedCases.length,
+                            testResults: Array.isArray(parsed.testResults) ? parsed.testResults : [],
                         });
                         return;
                     } catch {
-                        // In case output wasn't pure JSON
+                        // Output wasn't pure JSON
                     }
                 }
 
@@ -466,13 +656,28 @@ export async function executePythonCode(codeOrPayload, rawTestCases = []) {
                     isCorrect: false,
                     executionTimeMs,
                     output: trimmedOut || '(çıxış yoxdur)',
-                    error: stderr.trim() || 'Nəticə oxunarkən xəta baş verdi.'
+                    error: stderr.trim() || 'Nəticə oxunarkən xəta baş verdi.',
+                    totalPassedTests: 0,
+                    totalTests: parsedCases.length,
+                    testResults: [],
                 });
             });
         });
     } finally {
         await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
+}
+
+/**
+ * Executes Python code through the concurrency-limited queue (max 3 simultaneous processes).
+ * Handles both function-based LeetCode style and competitive programming stdin/stdout style.
+ *
+ * @param {string|object} codeOrPayload - The Python source code string, or an object containing code and testCases
+ * @param {Array|string} [rawTestCases=[]] - Array of test case objects [{ input, expectedOutput, isHidden }]
+ * @returns {Promise<{ isCorrect: boolean, executionTimeMs: number, output: string, error: string|null, testResults: Array }>}
+ */
+export async function executePythonCode(codeOrPayload, rawTestCases = []) {
+    return enqueueExecution(() => _runPythonProcess(codeOrPayload, rawTestCases));
 }
 
 export const runPythonCode = executePythonCode;

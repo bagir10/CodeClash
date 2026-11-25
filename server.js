@@ -5,7 +5,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import crypto from 'node:crypto';
 import { supabase, supabaseAdmin } from './supabaseClient.js';
-import { executePythonCode } from './codeExecutor.js';
+import { executePythonCode, getExecutionQueueStats } from './codeExecutor.js';
+import { QUESTION_BANK, getQuestionsForDuel } from './questionBank.js';
 
 dotenv.config();
 
@@ -64,131 +65,168 @@ const corsOriginChecker = (origin, callback) => {
 };
 
 // =============================================================================
-// 1. DEFAULT SEEDED QUESTIONS (3 CORE PYTHON PROBLEMS)
+// 1. QUESTION LIBRARY & MATCHMAKING ENGINE (30 DIVERSE PROBLEMS)
 // =============================================================================
 
-const DEFAULT_SEEDED_QUESTIONS = [
-  {
-    title: 'İki Ədədin Cəmi (Two Sum)',
-    difficulty: 'easy',
-    problem_statement: `Verilmiş tam ədədlər massivində (nums) cəmi hədəf ədədə (target) bərabər olan iki ədədin indekslərini tapın və siyahı kimi qaytarın.
+function normalizeQuestion(q) {
+  if (!q) return null;
+  const starter = q.starter_code || q.base_code || 'def solution():\n    pass\n';
+  const testCases = Array.isArray(q.test_cases) ? q.test_cases : [];
+  const visible = Array.isArray(q.visible_tests) && q.visible_tests.length > 0
+    ? q.visible_tests
+    : testCases.slice(0, 2);
+  const hidden = Array.isArray(q.hidden_tests) && q.hidden_tests.length > 0
+    ? q.hidden_tests
+    : testCases.slice(2);
 
-Hər bir test üçün yalnız bir düzgün həllin olduğunu və eyni elementi iki dəfə istifadə edə bilməyəcəyinizi qəbul edin.
+  return {
+    ...q,
+    id: q.id || `q-${Math.random().toString(36).slice(2, 9)}`,
+    title: q.title || 'Sual',
+    difficulty: q.difficulty || 'medium',
+    topic: q.topic || 'General',
+    problem_statement: q.problem_statement || '',
+    starter_code: starter,
+    base_code: starter,
+    visible_tests: visible,
+    hidden_tests: hidden,
+    test_cases: testCases.length > 0 ? testCases : [...visible, ...hidden],
+    is_public: q.is_public ?? true,
+  };
+}
 
-Nümunə 1:
-Giriş: nums = [2, 7, 11, 15], target = 9
-Çıxış: [0, 1]
+let cachedQuestions = QUESTION_BANK.map(normalizeQuestion);
 
-Nümunə 2:
-Giriş: nums = [3, 2, 4], target = 6
-Çıxış: [1, 2]`,
-    base_code: `def solution(nums, target):
-    # nums: List[int], target: int -> List[int]
-    seen = {}
-    for idx, num in enumerate(nums):
-        diff = target - num
-        if diff in seen:
-            return [seen[diff], idx]
-        seen[num] = idx
-    return []
-`,
-    test_cases: [
-      { input: '[2, 7, 11, 15], 9', expectedOutput: '[0, 1]' },
-      { input: '[3, 2, 4], 6', expectedOutput: '[1, 2]' },
-      { input: '[3, 3], 6', expectedOutput: '[0, 1]' },
-    ],
-    is_public: true,
-  },
-  {
-    title: 'Polindrom Yoxlanışı (Palindrome Check)',
-    difficulty: 'easy',
-    problem_statement: `Verilmiş mətnin (s) polindrom olub-olmadığını yoxlayın. Polindrom həm sağdan sola, həm də soldan sağa eyni cür oxunan söz və ya cümlələrə deyilir.
+// In-memory anti-repeat question history & Elo ratings
+const recentQuestionsByUser = new Map(); // userId -> string[] (up to 25 recent question IDs)
+const userEloRatings = new Map(); // userId -> number (default 1200)
 
-Əgər mətn polindromdursa True, əks halda False qaytarın.
+function getRecentQuestions(userId) {
+  return recentQuestionsByUser.get(userId) || [];
+}
 
-Nümunə 1:
-Giriş: "radar"
-Çıxış: True
+function addRecentQuestions(userId, questionIds) {
+  if (!userId || !Array.isArray(questionIds)) return;
+  const existing = recentQuestionsByUser.get(userId) || [];
+  const combined = Array.from(new Set([...questionIds, ...existing])).slice(0, 25);
+  recentQuestionsByUser.set(userId, combined);
+}
 
-Nümunə 2:
-Giriş: "clash"
-Çıxış: False`,
-    base_code: `def solution(s):
-    # s: str -> bool
-    cleaned = ''.join(c.lower() for c in str(s) if c.isalnum())
-    return cleaned == cleaned[::-1]
-`,
-    test_cases: [
-      { input: '"radar"', expectedOutput: 'True' },
-      { input: '"clash"', expectedOutput: 'False' },
-      { input: '"madam"', expectedOutput: 'True' },
-      { input: '"racecar"', expectedOutput: 'True' },
-    ],
-    is_public: true,
-  },
-  {
-    title: 'Faktorialın Hesablanması (Factorial)',
-    difficulty: 'medium',
-    problem_statement: `Verilmiş mənfi olmayan tam ədədin (n) faktorialını (n!) hesablayan alqoritmi yazın (0! = 1 qəbul edilir).
+function getUserElo(userId) {
+  return userEloRatings.get(userId) || 1200;
+}
 
-Nümunə 1:
-Giriş: 5
-Çıxış: 120 (5 * 4 * 3 * 2 * 1)
+function calculateEloDeltas(playerA, playerB, winnerId) {
+  const ratingA = getUserElo(playerA.userId);
+  const ratingB = getUserElo(playerB.userId);
+  const K = 32;
 
-Nümunə 2:
-Giriş: 3
-Çıxış: 6`,
-    base_code: `def solution(n):
-    # n: int -> int
-    if n <= 1:
-        return 1
-    total = 1
-    for i in range(2, n + 1):
-        total *= i
-    return total
-`,
-    test_cases: [
-      { input: '5', expectedOutput: '120' },
-      { input: '3', expectedOutput: '6' },
-      { input: '0', expectedOutput: '1' },
-      { input: '6', expectedOutput: '720' },
-    ],
-    is_public: true,
-  },
-];
+  const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+  const expectedB = 1 / (1 + Math.pow(10, (ratingA - ratingB) / 400));
 
-let cachedQuestions = [...DEFAULT_SEEDED_QUESTIONS.map((q, idx) => ({ ...q, id: `seed-q-${idx + 1}` }))];
+  let actualA = 0.5;
+  let actualB = 0.5;
+
+  if (winnerId) {
+    if (winnerId === playerA.userId) {
+      actualA = 1;
+      actualB = 0;
+    } else if (winnerId === playerB.userId) {
+      actualA = 0;
+      actualB = 1;
+    }
+  }
+
+  const deltaA = Math.round(K * (actualA - expectedA));
+  const deltaB = Math.round(K * (actualB - expectedB));
+
+  const newEloA = Math.max(100, ratingA + deltaA);
+  const newEloB = Math.max(100, ratingB + deltaB);
+
+  userEloRatings.set(playerA.userId, newEloA);
+  userEloRatings.set(playerB.userId, newEloB);
+
+  return {
+    [playerA.userId]: { oldElo: ratingA, newElo: newEloA, delta: deltaA },
+    [playerB.userId]: { oldElo: ratingB, newElo: newEloB, delta: deltaB },
+  };
+}
 
 /**
- * Auto-seeds default Python questions into Supabase if fewer than 3 exist
+ * Strips heavy data (e.g. submittedCodes) to send lightweight broadcasts for 30+ participants
+ */
+function getSanitizedParticipants(room) {
+  if (!room || !room.participants) return [];
+  return Array.from(room.participants.values()).map((p) => ({
+    userId: p.userId,
+    username: p.username,
+    elo: p.elo || 1200,
+    solvedQuestionIds: Array.isArray(p.solvedQuestionIds) ? p.solvedQuestionIds : [],
+    solvedCount: Array.isArray(p.solvedQuestionIds) ? p.solvedQuestionIds.length : 0,
+    totalTimeMs: p.totalTimeMs || 0,
+    disqualified: Boolean(p.disqualified),
+    joinedAt: p.joinedAt,
+  }));
+}
+
+function getSanitizedLeaderboard(room) {
+  const sanitized = getSanitizedParticipants(room);
+  return sanitized.sort((a, b) => {
+    if (a.disqualified && !b.disqualified) return 1;
+    if (!a.disqualified && b.disqualified) return -1;
+    if (b.solvedCount !== a.solvedCount) {
+      return b.solvedCount - a.solvedCount;
+    }
+    return a.totalTimeMs - b.totalTimeMs;
+  });
+}
+
+/**
+ * Auto-seeds 30 diverse Python problems into Supabase if fewer than 30 exist
  */
 async function autoSeedQuestions() {
   try {
     const { data: existing, error } = await supabaseAdmin
       .from('questions')
-      .select('id, title, difficulty, problem_statement, base_code, test_cases');
+      .select('id, title, difficulty, problem_statement, base_code, test_cases, is_public');
 
     if (!error && Array.isArray(existing)) {
-      if (existing.length >= 3) {
-        cachedQuestions = existing;
+      if (existing.length >= 30) {
+        cachedQuestions = existing.map(normalizeQuestion);
         console.log(`[SEED] Loaded ${existing.length} questions from Supabase library.`);
         return;
       }
 
-      console.log(`[SEED] Supabase has ${existing.length} questions. Auto-seeding default 3 questions...`);
-      for (const q of DEFAULT_SEEDED_QUESTIONS) {
+      console.log(`[SEED] Supabase has ${existing.length} questions. Auto-seeding full question bank...`);
+      for (const q of QUESTION_BANK) {
         const alreadyExists = existing.some((item) => item.title === q.title);
         if (!alreadyExists) {
-          const { data: inserted } = await supabaseAdmin.from('questions').insert(q).select().single();
-          if (inserted) {
-            existing.push(inserted);
+          try {
+            const { data: inserted } = await supabaseAdmin
+              .from('questions')
+              .insert({
+                title: q.title,
+                difficulty: q.difficulty,
+                problem_statement: q.problem_statement,
+                base_code: q.starter_code || q.base_code,
+                test_cases: q.test_cases || [],
+                is_public: true,
+              })
+              .select()
+              .single();
+
+            if (inserted) {
+              existing.push(inserted);
+            }
+          } catch (insertErr) {
+            // Ignore individual insert errors
           }
         }
       }
-      cachedQuestions = existing.length > 0 ? existing : cachedQuestions;
+      cachedQuestions = existing.length > 0 ? existing.map(normalizeQuestion) : cachedQuestions;
     }
   } catch (err) {
-    console.warn('[SEED] Note: Supabase offline or unreachable, using local memory seed:', err.message);
+    console.warn('[SEED] Note: Supabase offline or unreachable, using in-memory question bank:', err.message);
   }
 }
 
@@ -251,6 +289,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     activeRooms: activeRooms.size,
     cachedQuestions: cachedQuestions.length,
+    executionQueue: getExecutionQueueStats(),
     timestamp: new Date().toISOString(),
   });
 });
@@ -281,21 +320,33 @@ app.get('/api/questions', async (req, res) => {
  */
 app.post('/api/rooms', async (req, res) => {
   try {
-    const { mode, duration_minutes, customQuestions, creator_id } = req.body;
+    const { mode, duration_minutes, customQuestions, creator_id, matchLength } = req.body;
     const isTournament = mode === 'tournament';
     const roomCode = generateRoomCode();
 
     let selectedQuestions = [];
     let questionIds = [];
 
+    const isClassic = matchLength === 'classic' || matchLength === 5;
+    const questionCount = isClassic ? 5 : 3;
+
     if (!isTournament) {
-      // 1v1 Duel: Pick 3 questions
+      // 1v1 Duel: Pick questions with anti-repeat matchmaking based on recent questions and Elo
       await autoSeedQuestions();
-      selectedQuestions = cachedQuestions.slice(0, 3);
-      if (selectedQuestions.length < 3) {
-        selectedQuestions = DEFAULT_SEEDED_QUESTIONS.map((q, idx) => ({ ...q, id: `seed-${idx + 1}` }));
+      const creatorRecent = getRecentQuestions(creator_id);
+      const creatorElo = getUserElo(creator_id);
+
+      selectedQuestions = getQuestionsForDuel({
+        count: questionCount,
+        excludeIds: creatorRecent,
+        playerElo: creatorElo,
+      }).map(normalizeQuestion);
+
+      if (selectedQuestions.length < questionCount) {
+        selectedQuestions = cachedQuestions.slice(0, questionCount).map(normalizeQuestion);
       }
       questionIds = selectedQuestions.map((q) => q.id);
+      addRecentQuestions(creator_id, questionIds);
     } else {
       // Tournament Mode: Save custom questions one by one
       if (Array.isArray(customQuestions) && customQuestions.length > 0) {
@@ -304,7 +355,8 @@ app.post('/api/rooms', async (req, res) => {
             title: cq.title || 'Xüsusi Sual',
             difficulty: cq.difficulty || 'medium',
             problem_statement: cq.problem_statement || '',
-            base_code: cq.base_code || 'def solution():\n    pass\n',
+            base_code: cq.base_code || cq.starter_code || 'def solution():\n    pass\n',
+            starter_code: cq.starter_code || cq.base_code || 'def solution():\n    pass\n',
             test_cases: Array.isArray(cq.test_cases) ? cq.test_cases : [],
             is_public: false,
           };
@@ -317,15 +369,16 @@ app.post('/api/rooms', async (req, res) => {
               .single();
 
             if (!insErr && inserted) {
-              selectedQuestions.push(inserted);
-              questionIds.push(inserted.id);
+              const norm = normalizeQuestion(inserted);
+              selectedQuestions.push(norm);
+              questionIds.push(norm.id);
             } else {
-              const fallbackQ = { ...newQ, id: crypto.randomUUID() };
+              const fallbackQ = normalizeQuestion({ ...newQ, id: crypto.randomUUID() });
               selectedQuestions.push(fallbackQ);
               questionIds.push(fallbackQ.id);
             }
           } catch (e) {
-            const fallbackQ = { ...newQ, id: crypto.randomUUID() };
+            const fallbackQ = normalizeQuestion({ ...newQ, id: crypto.randomUUID() });
             selectedQuestions.push(fallbackQ);
             questionIds.push(fallbackQ.id);
           }
@@ -333,14 +386,16 @@ app.post('/api/rooms', async (req, res) => {
       }
 
       if (selectedQuestions.length === 0) {
-        selectedQuestions = cachedQuestions.slice(0, 3);
+        await autoSeedQuestions();
+        const tournamentQCount = parseInt(req.body.questionCount, 10) || 5;
+        selectedQuestions = getQuestionsForDuel({ count: tournamentQCount }).map(normalizeQuestion);
         questionIds = selectedQuestions.map((q) => q.id);
       }
     }
 
     const durationSeconds = isTournament
       ? (parseInt(duration_minutes, 10) || 30) * 60
-      : 900; // 15 mins (900s) for 1v1
+      : (isClassic ? 1500 : 900); // 25 mins (1500s) for Classic, 15 mins (900s) for Blitz
 
     const maxPlayers = isTournament ? 100 : 2;
 
@@ -416,7 +471,11 @@ app.get('/api/rooms/:code', async (req, res) => {
           remainingSeconds: room.remainingSeconds,
           creator_id: room.creator_id,
           questions: room.questions,
-          participants: Array.from(room.participants.values()),
+          participants: getSanitizedLeaderboard(room),
+          leaderboard: room.leaderboard || getSanitizedLeaderboard(room),
+          winner: room.winner || null,
+          eloDeltas: room.eloDeltas || null,
+          codeSubmissions: room.status === 'finished' ? (room.codeSubmissions || {}) : {},
         },
       });
     }
@@ -516,6 +575,29 @@ function concludeMatch(roomCode, reason, winner = null) {
     sortedLeaderboard[0] ||
     null;
 
+  // Calculate Elo deltas for 1v1 duels
+  let eloDeltas = null;
+  const participantsList = Array.from(room.participants.values());
+  if (room.mode === '1v1' && participantsList.length >= 2) {
+    const p1 = participantsList[0];
+    const p2 = participantsList[1];
+    const winnerId = finalWinner && !finalWinner.disqualified ? finalWinner.userId : null;
+    eloDeltas = calculateEloDeltas(p1, p2, winnerId);
+  }
+
+  // Gather code submissions for post-match review & update recent questions
+  const codeSubmissions = {};
+  for (const p of participantsList) {
+    codeSubmissions[p.userId] = p.submittedCodes || {};
+    addRecentQuestions(p.userId, room.question_ids);
+  }
+
+  // Persist post-match state on room for page refreshes
+  room.leaderboard = sortedLeaderboard;
+  room.winner = finalWinner;
+  room.eloDeltas = eloDeltas;
+  room.codeSubmissions = codeSubmissions;
+
   console.log(`[MATCH ENDED] Room [${roomCode}]. Reason: ${reason}. Winner: ${finalWinner ? finalWinner.username : 'None'}`);
 
   io.to(roomCode).emit('match_ended', {
@@ -525,6 +607,8 @@ function concludeMatch(roomCode, reason, winner = null) {
     totalQuestions: room.questions.length,
     leaderboard: sortedLeaderboard,
     participants: sortedLeaderboard,
+    eloDeltas,
+    codeSubmissions,
   });
 }
 
@@ -599,6 +683,15 @@ io.on('connection', (socket) => {
       }
 
       const isAlreadyIn = room.participants.has(userId);
+
+      // Reconnect check: if the room is actively playing, only allow existing players to rejoin
+      if (room.status === 'active' && !isAlreadyIn) {
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Yarış artıq başlayıb. Yeni oyunçular aktiv oyuna qoşula bilməz.' });
+        }
+        return;
+      }
+
       if (!isAlreadyIn && room.participants.size >= room.max_players) {
         if (typeof callback === 'function') callback({ success: false, error: 'Otaq doludur.' });
         return;
@@ -611,17 +704,25 @@ io.on('connection', (socket) => {
         participant = {
           userId,
           username: username || `Oyunçu_${Math.floor(100 + Math.random() * 900)}`,
+          elo: getUserElo(userId),
           solvedQuestionIds: [],
+          submittedCodes: {},
           totalTimeMs: 0,
           disqualified: false,
           joinedAt: new Date().toISOString(),
         };
         room.participants.set(userId, participant);
+      } else {
+        // Player reconnected: keep existing stats, update username if provided
+        if (username) participant.username = username;
       }
 
       socketToUser.set(socket.id, { userId, username: participant.username, roomCode: code });
 
-      io.to(code).emit('roster_update', Array.from(room.participants.values()));
+      const sanitizedLeaderboard = getSanitizedLeaderboard(room);
+
+      // Broadcast lightweight roster update without code payload
+      io.to(code).emit('roster_update', sanitizedLeaderboard);
 
       if (typeof callback === 'function') {
         callback({
@@ -632,7 +733,12 @@ io.on('connection', (socket) => {
           durationSeconds: room.duration_seconds,
           remainingSeconds: room.remainingSeconds,
           questions: room.questions,
-          participants: Array.from(room.participants.values()),
+          participants: sanitizedLeaderboard,
+          myParticipant: {
+            solvedQuestionIds: participant.solvedQuestionIds || [],
+            submittedCodes: participant.submittedCodes || {},
+            disqualified: Boolean(participant.disqualified),
+          },
         });
       }
 
@@ -669,6 +775,16 @@ io.on('connection', (socket) => {
     }
   });
 
+  // update_editor_status ({ roomCode, userId, statusText, activeQuestionIndex })
+  socket.on('update_editor_status', ({ roomCode, userId, statusText, activeQuestionIndex }) => {
+    const code = String(roomCode || '').toUpperCase().trim();
+    socket.to(code).emit('opponent_status', {
+      userId,
+      statusText: statusText || 'Kod yazır...',
+      activeQuestionIndex: typeof activeQuestionIndex === 'number' ? activeQuestionIndex : 0,
+    });
+  });
+
   // submit_code ({ roomCode, questionId, code, userId })
   socket.on('submit_code', async (payload, callback) => {
     try {
@@ -693,6 +809,12 @@ io.on('connection', (socket) => {
         return;
       }
 
+      // Record submitted code for post-match review
+      if (participant) {
+        if (!participant.submittedCodes) participant.submittedCodes = {};
+        participant.submittedCodes[questionId] = code;
+      }
+
       console.log(`[EVAL] Executing code for user ${userId} on Question "${targetQuestion.title}" in Room [${codeUpper}]...`);
 
       const execResult = await executePythonCode(code, targetQuestion.test_cases);
@@ -711,20 +833,25 @@ io.on('connection', (socket) => {
           executionTimeMs: execResult.executionTimeMs,
           output: execResult.output,
           error: execResult.error,
+          totalPassedTests: execResult.totalPassedTests ?? (execResult.isCorrect ? (targetQuestion.test_cases?.length || 1) : 0),
+          totalTests: execResult.totalTests ?? (targetQuestion.test_cases?.length || 1),
+          testResults: execResult.testResults || [],
           solvedCount: participant ? participant.solvedQuestionIds.length : 0,
           totalQuestions: room.questions.length,
         });
       }
 
-      const sortedLeaderboard = Array.from(room.participants.values()).sort((a, b) => {
-        if (a.disqualified && !b.disqualified) return 1;
-        if (!a.disqualified && b.disqualified) return -1;
-        if (b.solvedQuestionIds.length !== a.solvedQuestionIds.length) {
-          return b.solvedQuestionIds.length - a.solvedQuestionIds.length;
-        }
-        return a.totalTimeMs - b.totalTimeMs;
+      // Broadcast opponent live progress to the other player(s)
+      socket.to(codeUpper).emit('opponent_progress', {
+        userId,
+        username: participant ? participant.username : 'Rəqib',
+        solvedCount: participant ? participant.solvedQuestionIds.length : 0,
+        totalQuestions: room.questions.length,
+        questionId,
+        isCorrect: execResult.isCorrect,
       });
 
+      const sortedLeaderboard = getSanitizedLeaderboard(room);
       io.to(codeUpper).emit('scoreboard_update', sortedLeaderboard);
 
       // In 1v1 mode, if a player solves ALL questions, conclude the match
@@ -768,23 +895,15 @@ io.on('connection', (socket) => {
         participant.disqualified = true;
       }
 
-      const participantsList = Array.from(room.participants.values());
+      const sanitizedLeaderboard = getSanitizedLeaderboard(room);
 
       // 2. Broadcast roster_update, scoreboard_update, and player_kicked
-      io.to(code).emit('roster_update', participantsList);
-      io.to(code).emit('scoreboard_update', participantsList);
+      io.to(code).emit('roster_update', sanitizedLeaderboard);
+      io.to(code).emit('scoreboard_update', sanitizedLeaderboard);
       io.to(code).emit('player_kicked', { userId, username });
 
-      // 3. If 1v1 mode and match is active, immediately end the match & award victory to remaining honest player
+      // 3. If 1v1 mode and match is active, conclude the match with the other player as winner
       if (room.mode === '1v1' && room.status === 'active') {
-        if (room.timerInterval) {
-          clearInterval(room.timerInterval);
-          room.timerInterval = null;
-        }
-
-        room.status = 'finished';
-        room.ended_at = new Date().toISOString();
-
         const remainingPlayers = participantsList.filter(
           (p) => !p.disqualified && p.userId !== userId
         );
@@ -794,14 +913,7 @@ io.on('connection', (socket) => {
           `[1v1 AUTO-WIN] Due to disqualification of ${username}, ${winner ? winner.username : 'remaining player'} automatically wins Room [${code}]!`
         );
 
-        io.to(code).emit('match_ended', {
-          roomCode: code,
-          reason: 'disqualification',
-          winner,
-          totalQuestions: room.questions.length,
-          leaderboard: participantsList,
-          participants: participantsList,
-        });
+        concludeMatch(code, 'disqualification', winner);
       }
     } catch (err) {
       console.error('[SOCKET] Error in player_disqualified handler:', err);
