@@ -26,8 +26,11 @@ import {
   RotateCcw,
   Zap,
   Eye,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import soundManager from '../utils/soundManager';
+import MobileCodeEditor from './MobileCodeEditor';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
 
@@ -88,7 +91,28 @@ export default function Arena({
   const [isMuted, setIsMuted] = useState(() => soundManager.isMuted());
 
   // ---------------------------------------------------------------------------
-  // 3. ANTI-CHEAT & DISQUALIFICATION STATE & REFS
+  // 3. RESPONSIVE MOBILE VIEW STATES (< 768px)
+  // ---------------------------------------------------------------------------
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
+  const [mobileTab, setMobileTab] = useState('question'); // 'question' | 'code' | 'terminal'
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // 4. ANTI-CHEAT & DISQUALIFICATION STATE & REFS
   // ---------------------------------------------------------------------------
   const [warningCount, setWarningCount] = useState(0);
   const [showWarningModal, setShowWarningModal] = useState(null); // { count: number }
@@ -118,7 +142,7 @@ export default function Arena({
   const socketRef = useRef(null);
 
   // ---------------------------------------------------------------------------
-  // 4. SOUND TOGGLE HANDLER
+  // 5. SOUND TOGGLE HANDLER
   // ---------------------------------------------------------------------------
   const handleToggleMute = () => {
     const nextMuted = soundManager.toggleMute();
@@ -126,7 +150,7 @@ export default function Arena({
   };
 
   // ---------------------------------------------------------------------------
-  // 5. INITIAL ROOM FETCH
+  // 6. INITIAL ROOM FETCH
   // ---------------------------------------------------------------------------
   useEffect(() => {
     async function fetchRoom() {
@@ -180,7 +204,7 @@ export default function Arena({
   }, [roomCode, serverUrl]);
 
   // ---------------------------------------------------------------------------
-  // 6. SOCKET.IO INTEGRATION & REALTIME EVENTS
+  // 7. SOCKET.IO INTEGRATION & REALTIME EVENTS
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!roomCode) return;
@@ -338,7 +362,7 @@ export default function Arena({
   }, [roomCode, serverUrl, user.id, user.username]);
 
   // ---------------------------------------------------------------------------
-  // 7. RELIABLE ANTI-CHEAT VIOLATION HANDLER (1200ms COOLDOWN & 3-STRIKE KICK)
+  // 8. RELIABLE ANTI-CHEAT VIOLATION HANDLER (1200ms COOLDOWN & 3-STRIKE KICK)
   // ---------------------------------------------------------------------------
   const handleViolation = useCallback(
     (reason = 'WINDOW_BLUR_OR_ALT_TAB') => {
@@ -413,7 +437,7 @@ export default function Arena({
   }, [status, isDisqualified, handleViolation]);
 
   // ---------------------------------------------------------------------------
-  // 8. CODE SUBMISSION & RESET HANDLERS
+  // 9. CODE SUBMISSION & RESET HANDLERS
   // ---------------------------------------------------------------------------
   const handleCopyCode = () => {
     navigator.clipboard.writeText(roomCode);
@@ -469,6 +493,11 @@ export default function Arena({
   const handleSubmitCode = useCallback(() => {
     if (status !== 'active' || !currentQuestion || isDisqualified || isSubmitting) return;
 
+    // Automatically switch to Terminal tab on mobile so test execution is seen immediately!
+    if (isMobile) {
+      setMobileTab('terminal');
+    }
+
     setIsSubmitting(true);
     setOutputConsole(null);
     setSelectedTestCaseIndex(0);
@@ -499,7 +528,7 @@ export default function Arena({
         }
       }
     );
-  }, [status, currentQuestion, isDisqualified, isSubmitting, roomCode, currentCode, user.id, userSolvedIds]);
+  }, [status, currentQuestion, isDisqualified, isSubmitting, roomCode, currentCode, user.id, userSolvedIds, isMobile]);
 
   // Keep ref up to date for Monaco keyboard shortcuts
   const submitRef = useRef(handleSubmitCode);
@@ -520,7 +549,7 @@ export default function Arena({
     });
   };
 
-  // Global keydown fallback for Ctrl+Enter / Cmd+Enter
+  // Global keydown fallback for Ctrl+Enter / Cmd+Enter on desktop
   useEffect(() => {
     const onKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -563,7 +592,287 @@ export default function Arena({
     (opponentParticipant?.solvedQuestionIds?.length || 0);
 
   // ---------------------------------------------------------------------------
-  // 9. LOADING & ERROR SCREENS
+  // 10. REUSABLE SUB-PANEL RENDERERS (LEADERBOARD & TERMINAL)
+  // ---------------------------------------------------------------------------
+  const renderLeaderboardList = () => (
+    <div className="space-y-2">
+      {participants.map((p, idx) => {
+        const solvedCount = p.solvedQuestionIds?.length || 0;
+        const isMe = p.userId === user.id;
+
+        return (
+          <div
+            key={p.userId}
+            className={`p-2.5 rounded-xl border flex items-center justify-between text-xs font-mono ${
+              isMe
+                ? 'bg-cyan-950/40 border-cyan-500/50 text-white'
+                : 'bg-[#111827] border-gray-800 text-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-bold text-gray-500">#{idx + 1}</span>
+              <span
+                className={`font-bold truncate max-w-[120px] ${
+                  p.disqualified ? 'line-through text-rose-400' : ''
+                }`}
+              >
+                {p.username} {isMe && '(Siz)'}
+              </span>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              {p.disqualified ? (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-700/60 font-bold">
+                  Kənarlaşdırıldı
+                </span>
+              ) : (
+                <span
+                  className={`font-bold ${
+                    solvedCount === questions.length
+                      ? 'text-emerald-400'
+                      : solvedCount > 0
+                      ? 'text-cyan-400'
+                      : 'text-gray-500'
+                  }`}
+                >
+                  {solvedCount} / {questions.length}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderTerminalPanel = () => (
+    <div className="flex-1 flex flex-col bg-[#0d1117] h-full overflow-hidden border border-gray-800/80 rounded-xl">
+      {/* Tab Navigation Header */}
+      <div className="h-9 bg-[#161b22] px-3 sm:px-4 flex items-center justify-between border-b border-gray-800 shrink-0">
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={() => setConsoleTab('testcases')}
+            className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+              consoleTab === 'testcases'
+                ? 'bg-cyan-950 text-cyan-300 border border-cyan-600/40'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Test Nümunələri</span>
+            {outputConsole?.testResults && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-900/60 text-cyan-200">
+                {outputConsole.totalPassedTests || 0}/{outputConsole.totalTests || outputConsole.testResults.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setConsoleTab('raw')}
+            className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+              consoleTab === 'raw'
+                ? 'bg-gray-800 text-white border border-gray-700'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <TerminalIcon className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Konsol / Xətalar</span>
+          </button>
+        </div>
+
+        {outputConsole && (
+          <button
+            type="button"
+            onClick={() => setOutputConsole(null)}
+            className="text-[10px] font-mono text-gray-400 hover:text-white"
+          >
+            Təmizlə
+          </button>
+        )}
+      </div>
+
+      {/* Tab 1: Test Cases Viewer */}
+      {consoleTab === 'testcases' && (
+        <div className="flex-1 p-3.5 font-mono text-xs overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
+          {!outputConsole ? (
+            <div className="text-gray-500 flex flex-col items-center justify-center h-full space-y-1">
+              <p>
+                Həllinizi test etmək üçün yuxarıdakı "Kodu Yoxla"
+                <span className="hidden sm:inline"> (Ctrl+Enter)</span> düyməsinə klikləyin.
+              </p>
+              <p className="text-[11px] text-gray-600">Bütün açıq və gizli testlər avtomatik yoxlanılacaq.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Overall Summary Bar */}
+              <div className="flex flex-wrap items-center justify-between pb-2 border-b border-gray-800 gap-2">
+                <div className="flex items-center space-x-2">
+                  {outputConsole.isCorrect ? (
+                    <div className="flex items-center space-x-1.5 text-emerald-400 font-bold">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>DÜZGÜNDÜR! Bütün test nümunələri uğurla keçdi.</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-1.5 text-rose-400 font-bold">
+                      <XCircle className="w-4 h-4 shrink-0" />
+                      <span>SƏHV! Bəzi testlər gözlənilən nəticəni vermədi.</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-2 text-gray-400 text-[11px]">
+                  <span>
+                    Keçdi: <strong className="text-white">{outputConsole.totalPassedTests || 0} / {outputConsole.totalTests || (outputConsole.testResults?.length || 1)}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>İcra: <strong className="text-white">{outputConsole.executionTimeMs}ms</strong></span>
+                </div>
+              </div>
+
+              {/* Test Case Sub-Selector Buttons */}
+              {Array.isArray(outputConsole.testResults) && outputConsole.testResults.length > 0 && (
+                <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+                  {outputConsole.testResults.map((tc, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedTestCaseIndex(idx)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-bold flex items-center space-x-1.5 transition-all shrink-0 ${
+                        selectedTestCaseIndex === idx
+                          ? 'bg-[#1a2333] border-cyan-500 text-cyan-300 shadow-md'
+                          : 'bg-[#111827] border-gray-800 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      <span>Test #{tc.testNum || idx + 1} {tc.isHidden ? '(Gizli)' : ''}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
+                          tc.passed
+                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-600/40'
+                            : 'bg-rose-950 text-rose-400 border border-rose-600/40'
+                        }`}
+                      >
+                        {tc.passed ? '✓ Keçdi' : '✕ Xəta'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Active Test Case Detail Inspector */}
+              {(() => {
+                const activeTc =
+                  outputConsole.testResults?.[selectedTestCaseIndex] ||
+                  outputConsole.testResults?.[0];
+
+                if (!activeTc) {
+                  return (
+                    <div className="text-gray-400 text-xs">
+                      Test nəticəsi mövcud deyil.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="bg-[#111827] border border-gray-800/80 rounded-xl p-3 space-y-2 text-xs">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-gray-800/60">
+                      <span className="font-bold text-gray-300">
+                        Test #{activeTc.testNum || selectedTestCaseIndex + 1} Detalları {activeTc.isHidden ? '(Gizli Test)' : ''}
+                      </span>
+                      <span
+                        className={`font-black text-xs ${
+                          activeTc.passed ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        {activeTc.passed ? 'PASSED (KEÇDİ)' : 'FAILED (UĞURSUZ)'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono">
+                      {/* Input */}
+                      <div>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
+                          Giriş (Input):
+                        </span>
+                        <pre className="bg-gray-950/80 border border-gray-800 p-2 rounded-lg mt-1 text-gray-300 text-[11px] overflow-x-auto whitespace-pre-wrap select-text">
+                          {activeTc.input}
+                        </pre>
+                      </div>
+
+                      {/* Expected Output */}
+                      <div>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
+                          Gözlənilən Çıxış:
+                        </span>
+                        <pre className="bg-gray-950/80 border border-gray-800 p-2 rounded-lg mt-1 text-emerald-300 text-[11px] overflow-x-auto whitespace-pre-wrap select-text">
+                          {activeTc.expected}
+                        </pre>
+                      </div>
+
+                      {/* Actual Output */}
+                      <div>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
+                          Sənin Çıxışın:
+                        </span>
+                        <pre
+                          className={`bg-gray-950/80 border p-2 rounded-lg mt-1 text-[11px] overflow-x-auto whitespace-pre-wrap select-text ${
+                            activeTc.passed
+                              ? 'border-gray-800 text-emerald-300'
+                              : 'border-rose-900/60 text-rose-300'
+                          }`}
+                        >
+                          {activeTc.actual || '(Çıxış yoxdur)'}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: Raw Console & Standard Errors */}
+      {consoleTab === 'raw' && (
+        <div className="flex-1 p-3.5 font-mono text-xs overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
+          {!outputConsole ? (
+            <div className="text-gray-500 flex flex-col items-center justify-center h-full">
+              <p>Konsol çıxışını görmək üçün kodu işə salın.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Raw Stdout */}
+              <div>
+                <span className="text-[10px] font-mono uppercase tracking-widest block text-cyan-400 font-bold">
+                  Standart Çıxış (stdout):
+                </span>
+                <pre className="text-gray-200 bg-gray-900/90 border border-gray-800 p-2.5 rounded-lg mt-1 font-mono text-xs overflow-x-auto whitespace-pre-wrap select-text">
+                  {outputConsole.output ? outputConsole.output : '(Çıxış yoxdur / print edilməyib)'}
+                </pre>
+              </div>
+
+              {/* Stderr / Errors */}
+              {outputConsole.error && (
+                <div>
+                  <span className="text-[10px] font-mono text-rose-400 uppercase tracking-widest block font-bold">
+                    Xəta / Traceback (stderr):
+                  </span>
+                  <pre className="text-rose-300 bg-rose-950/40 border border-rose-900/60 p-2.5 rounded-lg mt-1 font-mono text-xs overflow-x-auto whitespace-pre-wrap select-text">
+                    {outputConsole.error}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // ---------------------------------------------------------------------------
+  // 11. LOADING & ERROR SCREENS
   // ---------------------------------------------------------------------------
   if (status === 'loading') {
     return (
@@ -591,7 +900,7 @@ export default function Arena({
   }
 
   // ===========================================================================
-  // 10. FINAL RESULTS SCREEN (status === 'finished') WITH ELO & CODE REVIEW
+  // 12. FINAL RESULTS SCREEN (status === 'finished') WITH ELO & CODE REVIEW
   // ===========================================================================
   if (status === 'finished') {
     const rawList = Array.isArray(finalResults)
@@ -815,23 +1124,29 @@ export default function Arena({
               </div>
 
               <div className="h-96 w-full relative">
-                <Editor
-                  height="100%"
-                  defaultLanguage="python"
-                  theme="vs-dark"
-                  value={opponentCodeForInspect}
-                  options={{
-                    readOnly: true,
-                    minimap: { enabled: false },
-                    fontSize: 13,
-                    lineNumbers: 'on',
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    tabSize: 4,
-                    padding: { top: 12 },
-                    fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                  }}
-                />
+                {isMobile ? (
+                  <pre className="p-4 text-xs font-mono text-purple-200 bg-[#0d1117] h-full overflow-y-auto whitespace-pre select-text">
+                    {opponentCodeForInspect}
+                  </pre>
+                ) : (
+                  <Editor
+                    height="100%"
+                    defaultLanguage="python"
+                    theme="vs-dark"
+                    value={opponentCodeForInspect}
+                    options={{
+                      readOnly: true,
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      tabSize: 4,
+                      padding: { top: 12 },
+                      fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                    }}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -848,7 +1163,7 @@ export default function Arena({
   }
 
   // ===========================================================================
-  // 11. WAITING ROOM SCREEN (status === 'waiting')
+  // 13. WAITING ROOM SCREEN (status === 'waiting')
   // ===========================================================================
   if (status === 'waiting') {
     const isHost = user.id === room?.creator_id;
@@ -856,7 +1171,7 @@ export default function Arena({
 
     return (
       <div className="min-h-screen bg-[#090d16] text-gray-100 flex flex-col font-sans select-none">
-        <header className="h-16 border-b border-gray-800 bg-[#0f172a] px-6 flex items-center justify-between">
+        <header className="h-16 border-b border-gray-800 bg-[#0f172a] px-4 sm:px-6 flex items-center justify-between">
           <button
             onClick={() => navigate('/')}
             className="flex items-center space-x-2 text-xs font-mono text-gray-400 hover:text-white"
@@ -880,23 +1195,23 @@ export default function Arena({
           </div>
         </header>
 
-        <main className="flex-1 max-w-2xl w-full mx-auto p-6 md:p-10 flex flex-col items-center justify-center text-center">
+        <main className="flex-1 max-w-2xl w-full mx-auto p-4 sm:p-6 md:p-10 flex flex-col items-center justify-center text-center">
           <div className="w-16 h-16 rounded-2xl bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-400 mb-6 shadow-xl shadow-cyan-950/60">
             {isTournament ? <Trophy className="w-8 h-8" /> : <Swords className="w-8 h-8" />}
           </div>
 
-          <h2 className="text-3xl font-extrabold text-white">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
             {isTournament ? 'Turnir Gözləmə Otağı' : '1vs1 Duel Otağı'}
           </h2>
 
-          <p className="text-xs text-gray-400 mt-2 max-w-md">
+          <p className="text-xs text-gray-400 mt-2 max-w-md px-2">
             {isTournament
               ? 'Kodu iştirakçılarla paylaşın. Bütün oyunçular qoşulduqdan sonra yarışı başladın.'
               : 'İkinci oyunçu bu kodu daxil edən kimi yarış avtomatik başlayacaq.'}
           </p>
 
           {/* Big 6-Character Code Display */}
-          <div className="mt-8 bg-[#111827] border border-gray-800 rounded-2xl p-5 flex items-center justify-between w-full max-w-md shadow-2xl">
+          <div className="mt-8 bg-[#111827] border border-gray-800 rounded-2xl p-4 sm:p-5 flex items-center justify-between w-full max-w-md shadow-2xl">
             <div className="text-left font-mono">
               <span className="text-[10px] text-gray-500 uppercase tracking-widest block font-bold">
                 Otaq Kodu
@@ -906,7 +1221,7 @@ export default function Arena({
 
             <button
               onClick={handleCopyCode}
-              className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold transition-all"
+              className="flex items-center space-x-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold transition-all"
             >
               {copiedCode ? (
                 <>
@@ -923,7 +1238,7 @@ export default function Arena({
           </div>
 
           {/* Live Roster List */}
-          <div className="mt-8 w-full max-w-md bg-[#0f172a]/90 border border-gray-800 rounded-2xl p-5 shadow-xl">
+          <div className="mt-8 w-full max-w-md bg-[#0f172a]/90 border border-gray-800 rounded-2xl p-4 sm:p-5 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b border-gray-800 text-xs font-mono">
               <span className="text-gray-300 font-bold flex items-center space-x-1.5">
                 <Users className="w-4 h-4 text-cyan-400" />
@@ -982,10 +1297,10 @@ export default function Arena({
   }
 
   // ===========================================================================
-  // 12. ACTIVE ARENA SCREEN (status === 'active')
+  // 14. ACTIVE ARENA SCREEN (status === 'active')
   // ===========================================================================
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#090d16] text-gray-100 font-sans select-none overflow-hidden relative">
+    <div className="flex flex-col min-h-screen md:h-screen w-full bg-[#090d16] text-gray-100 font-sans select-none md:overflow-hidden relative pb-16 md:pb-0">
       {/* ---------------------------------------------------------------------
           PROMINENT HIGH-VISIBILITY WARNING OVERLAY (WARNING 1 & 2)
       ---------------------------------------------------------------------- */}
@@ -1063,14 +1378,14 @@ export default function Arena({
       {/* ---------------------------------------------------------------------
           TOP BAR: BRANDING, OPPONENT PROGRESS, QUESTION TABS & TIMER
       ---------------------------------------------------------------------- */}
-      <header className="h-14 border-b border-gray-800 bg-[#0f172a] px-4 flex items-center justify-between shrink-0 shadow-md">
+      <header className="h-14 border-b border-gray-800 bg-[#0f172a] px-3 sm:px-4 flex items-center justify-between shrink-0 shadow-md sticky top-0 z-30">
         {/* Left: Branding & Room Code */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-600">
-            <Flame className="w-5 h-5 text-white animate-pulse" />
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+          <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-600">
+            <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-white animate-pulse" />
           </div>
           <div>
-            <h1 className="text-sm font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 leading-tight">
+            <h1 className="text-xs sm:text-sm font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 leading-tight">
               CODE CLASH
             </h1>
             <span className="text-[10px] font-mono text-cyan-300 font-bold tracking-wider">
@@ -1078,9 +1393,9 @@ export default function Arena({
             </span>
           </div>
 
-          {/* Opponent Live Status & Solved Progress */}
+          {/* Opponent Live Status & Solved Progress (Desktop) */}
           {opponentParticipant && (
-            <div className="hidden sm:flex items-center space-x-2 pl-3 border-l border-gray-800">
+            <div className="hidden lg:flex items-center space-x-2 pl-3 border-l border-gray-800">
               <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-purple-950/60 border border-purple-600/40 text-purple-300 text-xs font-mono">
                 <Zap className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
                 <span className="font-bold">
@@ -1096,15 +1411,15 @@ export default function Arena({
           )}
 
           {warningCount > 0 && (
-            <div className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-600/50 text-[10px] font-mono font-bold">
+            <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-600/50 text-[10px] font-mono font-bold">
               <AlertTriangle className="w-3 h-3" />
-              <span>{warningCount}/3 Xəbərdarlıq</span>
+              <span>{warningCount}/3</span>
             </div>
           )}
         </div>
 
         {/* Center: Question Tabs (Sual 1, Sual 2, Sual 3...) */}
-        <div className="flex items-center space-x-1.5 bg-[#111827] p-1 rounded-xl border border-gray-800">
+        <div className="flex items-center space-x-1 sm:space-x-1.5 bg-[#111827] p-1 rounded-xl border border-gray-800 overflow-x-auto scrollbar-none max-w-[125px] xs:max-w-[180px] sm:max-w-none">
           {questions.map((q, idx) => {
             const isSolved = userSolvedIds.includes(q.id);
             const isActive = activeQuestionIndex === idx;
@@ -1117,16 +1432,16 @@ export default function Arena({
                   setOutputConsole(null);
                   setSelectedTestCaseIndex(0);
                 }}
-                className={`px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center space-x-1.5 transition-all ${
+                className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center space-x-1 sm:space-x-1.5 transition-all shrink-0 ${
                   isActive
                     ? 'bg-cyan-600 text-white shadow-md'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}
               >
                 {isSolved ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
                 ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500 shrink-0" />
                 )}
                 <span>Sual {idx + 1}</span>
               </button>
@@ -1134,24 +1449,24 @@ export default function Arena({
           })}
         </div>
 
-        {/* Right: Sound Toggle, Timer & Submit Button */}
-        <div className="flex items-center space-x-3">
+        {/* Right: Sound Toggle, Timer & Desktop Submit Button */}
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           {/* Web Audio Mute Toggle Button */}
           <button
             onClick={handleToggleMute}
             title={isMuted ? 'Səsi Aç' : 'Səsi Söndür'}
-            className="p-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-gray-700 transition-all"
+            className="p-1.5 sm:p-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-gray-700 transition-all"
           >
             {isMuted ? (
-              <VolumeX className="w-4 h-4 text-rose-400" />
+              <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400" />
             ) : (
-              <Volume2 className="w-4 h-4 text-cyan-400" />
+              <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400" />
             )}
           </button>
 
-          <div className="flex items-center space-x-1.5 text-sm font-mono font-bold text-white bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
+          <div className="flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-mono font-bold text-white bg-gray-900 px-2 sm:px-3 py-1.5 rounded-lg border border-gray-800">
             <Clock
-              className={`w-4 h-4 ${
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
                 remainingSeconds <= 60 ? 'text-rose-400 animate-bounce' : 'text-cyan-400'
               }`}
             />
@@ -1160,11 +1475,12 @@ export default function Arena({
             </span>
           </div>
 
+          {/* Desktop "Kodu Yoxla" Button (Hidden on Mobile) */}
           <button
             onClick={handleSubmitCode}
             disabled={isSubmitting || status !== 'active' || isDisqualified}
             title="Kodu Yoxla (Ctrl + Enter)"
-            className={`flex items-center space-x-2 px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all shadow-md ${
+            className={`hidden md:flex items-center space-x-2 px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all shadow-md ${
               isSubmitting
                 ? 'bg-amber-600 text-white cursor-wait'
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed'
@@ -1186,11 +1502,131 @@ export default function Arena({
       </header>
 
       {/* ---------------------------------------------------------------------
-          MAIN ARENA SPLIT VIEW
+          MOBILE 3-TAB SWITCHER BAR (< 768px)
       ---------------------------------------------------------------------- */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="md:hidden flex items-center border-b border-gray-800 bg-[#0f172a] px-2 py-1.5 shrink-0 sticky top-14 z-20">
+        <button
+          type="button"
+          onClick={() => setMobileTab('question')}
+          className={`flex-1 py-2 px-2 rounded-xl text-xs font-mono font-bold flex items-center justify-center space-x-1.5 transition-all ${
+            mobileTab === 'question'
+              ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/50 shadow-md'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <span>📄 Sual</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMobileTab('code')}
+          className={`flex-1 py-2 px-2 rounded-xl text-xs font-mono font-bold flex items-center justify-center space-x-1.5 transition-all ${
+            mobileTab === 'code'
+              ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/50 shadow-md'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <span>💻 Kod</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMobileTab('terminal')}
+          className={`flex-1 py-2 px-2 rounded-xl text-xs font-mono font-bold flex items-center justify-center space-x-1.5 transition-all relative ${
+            mobileTab === 'terminal'
+              ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/50 shadow-md'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <span>🖥️ Terminal</span>
+          {outputConsole && (
+            <span
+              className={`w-2 h-2 rounded-full absolute top-1.5 right-2 ${
+                outputConsole.isCorrect ? 'bg-emerald-400' : 'bg-rose-500'
+              }`}
+            />
+          )}
+        </button>
+      </div>
+
+      {/* ---------------------------------------------------------------------
+          MOBILE LAYOUT TABS (< 768px)
+      ---------------------------------------------------------------------- */}
+      <div className="md:hidden flex-1 flex flex-col overflow-y-auto">
+        {/* Tab 1: Question Description & Collapsible Leaderboard */}
+        {mobileTab === 'question' && (
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+              <span className="text-xs font-mono font-bold text-gray-300">
+                Sual {activeQuestionIndex + 1} / {questions.length} • {currentQuestion?.topic || 'Python'}
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                Python 3.10
+              </span>
+            </div>
+
+            <h2 className="text-base font-bold text-white tracking-wide">
+              {currentQuestion?.title || 'Sual Yüklənir...'}
+            </h2>
+
+            {/* Clean Line Breaks in Problem Statement */}
+            <div className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-200 select-text">
+              {formatProblemStatement(currentQuestion?.problem_statement)}
+            </div>
+
+            {/* Collapsible Mobile Live Leaderboard */}
+            <div className="mt-6 pt-4 border-t border-gray-800">
+              <button
+                type="button"
+                onClick={() => setShowMobileLeaderboard((prev) => !prev)}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#111827] border border-gray-800 text-xs font-mono font-bold text-gray-300"
+              >
+                <span className="flex items-center space-x-2">
+                  <Trophy className="w-4 h-4 text-amber-400" />
+                  <span>Canlı Liderlik Cədvəli ({participants.length} Oyunçu)</span>
+                </span>
+                {showMobileLeaderboard ? (
+                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
+
+              {showMobileLeaderboard && (
+                <div className="mt-2.5 space-y-2">
+                  {renderLeaderboardList()}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Full-Height Instant Mobile Code Editor */}
+        {mobileTab === 'code' && (
+          <div className="p-2 sm:p-3 flex-1 flex flex-col min-h-[420px]">
+            <MobileCodeEditor
+              value={currentCode}
+              onChange={handleEditorChange}
+              onReset={handleResetCode}
+              activeQuestionIndex={activeQuestionIndex}
+            />
+          </div>
+        )}
+
+        {/* Tab 3: Full-Height Terminal Output & Test Cases */}
+        {mobileTab === 'terminal' && (
+          <div className="p-2 sm:p-3 flex-1 flex flex-col min-h-[400px]">
+            {renderTerminalPanel()}
+          </div>
+        )}
+      </div>
+
+      {/* ---------------------------------------------------------------------
+          DESKTOP MAIN ARENA SPLIT VIEW (>= 768px)
+      ---------------------------------------------------------------------- */}
+      <div className="hidden md:flex flex-1 flex-row overflow-hidden">
         {/* Left Panel: Problem Statement & Live Scoreboard (38%) */}
-        <section className="w-full md:w-[38%] border-r border-gray-800 flex flex-col bg-[#0b0f19] overflow-hidden">
+        <section className="w-[38%] border-r border-gray-800 flex flex-col bg-[#0b0f19] overflow-hidden">
           <div className="h-10 border-b border-gray-800 bg-[#0f172a]/70 px-4 flex items-center justify-between">
             <span className="text-xs font-mono font-bold text-gray-300">
               Sual {activeQuestionIndex + 1} / {questions.length} • {currentQuestion?.topic || 'Python'}
@@ -1219,54 +1655,7 @@ export default function Arena({
                 <span className="text-[10px] text-gray-500">{participants.length} Oyunçu</span>
               </h3>
 
-              <div className="space-y-2">
-                {participants.map((p, idx) => {
-                  const solvedCount = p.solvedQuestionIds?.length || 0;
-                  const isMe = p.userId === user.id;
-
-                  return (
-                    <div
-                      key={p.userId}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between text-xs font-mono ${
-                        isMe
-                          ? 'bg-cyan-950/40 border-cyan-500/50 text-white'
-                          : 'bg-[#111827] border-gray-800 text-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-bold text-gray-500">#{idx + 1}</span>
-                        <span
-                          className={`font-bold truncate max-w-[120px] ${
-                            p.disqualified ? 'line-through text-rose-400' : ''
-                          }`}
-                        >
-                          {p.username} {isMe && '(Siz)'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        {p.disqualified ? (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-700/60 font-bold">
-                            Kənarlaşdırıldı
-                          </span>
-                        ) : (
-                          <span
-                            className={`font-bold ${
-                              solvedCount === questions.length
-                                ? 'text-emerald-400'
-                                : solvedCount > 0
-                                ? 'text-cyan-400'
-                                : 'text-gray-500'
-                            }`}
-                          >
-                            {solvedCount} / {questions.length}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {renderLeaderboardList()}
             </div>
           </div>
         </section>
@@ -1292,6 +1681,7 @@ export default function Arena({
                   Avtomatik saxlanılır
                 </span>
                 <button
+                  type="button"
                   onClick={handleResetCode}
                   title="Başlanğıc koda geri qaytar"
                   className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white text-[11px] font-mono transition-all"
@@ -1310,6 +1700,12 @@ export default function Arena({
                 value={currentCode}
                 onChange={handleEditorChange}
                 onMount={handleEditorDidMount}
+                loading={
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500 font-mono text-xs space-y-2">
+                    <div className="w-5 h-5 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+                    <span>Redaktor hazırlanır...</span>
+                  </div>
+                }
                 options={{
                   minimap: { enabled: false },
                   fontSize: 14,
@@ -1327,222 +1723,52 @@ export default function Arena({
 
           {/* Bottom: 2-Tab Execution Console Panel (Test Cases vs Raw Console) */}
           <div className="h-[38%] flex flex-col bg-[#0d1117]">
-            {/* Tab Navigation Header */}
-            <div className="h-9 bg-[#161b22] px-4 flex items-center justify-between border-b border-gray-800">
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setConsoleTab('testcases')}
-                  className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
-                    consoleTab === 'testcases'
-                      ? 'bg-cyan-950 text-cyan-300 border border-cyan-600/40'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Test Nümunələri</span>
-                  {outputConsole?.testResults && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-900/60 text-cyan-200">
-                      {outputConsole.totalPassedTests || 0}/{outputConsole.totalTests || outputConsole.testResults.length}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setConsoleTab('raw')}
-                  className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
-                    consoleTab === 'raw'
-                      ? 'bg-gray-800 text-white border border-gray-700'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <TerminalIcon className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Konsol / Xətalar</span>
-                </button>
-              </div>
-
-              {outputConsole && (
-                <button
-                  onClick={() => setOutputConsole(null)}
-                  className="text-[10px] font-mono text-gray-400 hover:text-white"
-                >
-                  Təmizlə
-                </button>
-              )}
-            </div>
-
-            {/* Tab 1: Test Cases Viewer */}
-            {consoleTab === 'testcases' && (
-              <div className="flex-1 p-3.5 font-mono text-xs overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
-                {!outputConsole ? (
-                  <div className="text-gray-500 flex flex-col items-center justify-center h-full space-y-1">
-                    <p>Həllinizi test etmək üçün yuxarıdakı "Kodu Yoxla" (Ctrl+Enter) düyməsinə klikləyin.</p>
-                    <p className="text-[11px] text-gray-600">Bütün açıq və gizli testlər avtomatik yoxlanılacaq.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Overall Summary Bar */}
-                    <div className="flex items-center justify-between pb-2 border-b border-gray-800">
-                      <div className="flex items-center space-x-2">
-                        {outputConsole.isCorrect ? (
-                          <div className="flex items-center space-x-1.5 text-emerald-400 font-bold">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>DÜZGÜNDÜR! Bütün test nümunələri uğurla keçdi.</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-1.5 text-rose-400 font-bold">
-                            <XCircle className="w-4 h-4" />
-                            <span>SƏHV! Bəzi testlər gözlənilən nəticəni vermədi.</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center space-x-3 text-gray-400 text-[11px]">
-                        <span>
-                          Keçdi: <strong className="text-white">{outputConsole.totalPassedTests || 0} / {outputConsole.totalTests || (outputConsole.testResults?.length || 1)}</strong>
-                        </span>
-                        <span>•</span>
-                        <span>İcra Vaxtı: <strong className="text-white">{outputConsole.executionTimeMs}ms</strong></span>
-                      </div>
-                    </div>
-
-                    {/* Test Case Sub-Selector Buttons */}
-                    {Array.isArray(outputConsole.testResults) && outputConsole.testResults.length > 0 && (
-                      <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-                        {outputConsole.testResults.map((tc, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setSelectedTestCaseIndex(idx)}
-                            className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-bold flex items-center space-x-1.5 transition-all ${
-                              selectedTestCaseIndex === idx
-                                ? 'bg-[#1a2333] border-cyan-500 text-cyan-300 shadow-md'
-                                : 'bg-[#111827] border-gray-800 text-gray-400 hover:text-white'
-                            }`}
-                          >
-                            <span>Test #{tc.testNum || idx + 1} {tc.isHidden ? '(Gizli)' : ''}</span>
-                            <span
-                              className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
-                                tc.passed
-                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-600/40'
-                                  : 'bg-rose-950 text-rose-400 border border-rose-600/40'
-                              }`}
-                            >
-                              {tc.passed ? '✓ Keçdi' : '✕ Xəta'}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Active Test Case Detail Inspector */}
-                    {(() => {
-                      const activeTc =
-                        outputConsole.testResults?.[selectedTestCaseIndex] ||
-                        outputConsole.testResults?.[0];
-
-                      if (!activeTc) {
-                        return (
-                          <div className="text-gray-400 text-xs">
-                            Test nəticəsi mövcud deyil.
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div className="bg-[#111827] border border-gray-800/80 rounded-xl p-3 space-y-2 text-xs">
-                          <div className="flex items-center justify-between pb-1.5 border-b border-gray-800/60">
-                            <span className="font-bold text-gray-300">
-                              Test #{activeTc.testNum || selectedTestCaseIndex + 1} Detalları {activeTc.isHidden ? '(Gizli Test)' : ''}
-                            </span>
-                            <span
-                              className={`font-black text-xs ${
-                                activeTc.passed ? 'text-emerald-400' : 'text-rose-400'
-                              }`}
-                            >
-                              {activeTc.passed ? 'PASSED (KEÇDİ)' : 'FAILED (UĞURSUZ)'}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono">
-                            {/* Input */}
-                            <div>
-                              <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
-                                Giriş (Input):
-                              </span>
-                              <pre className="bg-gray-950/80 border border-gray-800 p-2 rounded-lg mt-1 text-gray-300 text-[11px] overflow-x-auto whitespace-pre-wrap select-text">
-                                {activeTc.input}
-                              </pre>
-                            </div>
-
-                            {/* Expected Output */}
-                            <div>
-                              <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
-                                Gözlənilən Çıxış:
-                              </span>
-                              <pre className="bg-gray-950/80 border border-gray-800 p-2 rounded-lg mt-1 text-emerald-300 text-[11px] overflow-x-auto whitespace-pre-wrap select-text">
-                                {activeTc.expected}
-                              </pre>
-                            </div>
-
-                            {/* Actual Output */}
-                            <div>
-                              <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
-                                Sənin Çıxışın:
-                              </span>
-                              <pre
-                                className={`bg-gray-950/80 border p-2 rounded-lg mt-1 text-[11px] overflow-x-auto whitespace-pre-wrap select-text ${
-                                  activeTc.passed
-                                    ? 'border-gray-800 text-emerald-300'
-                                    : 'border-rose-900/60 text-rose-300'
-                                }`}
-                              >
-                                {activeTc.actual || '(Çıxış yoxdur)'}
-                              </pre>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Tab 2: Raw Console & Standard Errors */}
-            {consoleTab === 'raw' && (
-              <div className="flex-1 p-3.5 font-mono text-xs overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
-                {!outputConsole ? (
-                  <div className="text-gray-500 flex flex-col items-center justify-center h-full">
-                    <p>Konsol çıxışını görmək üçün kodu işə salın.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Raw Stdout */}
-                    <div>
-                      <span className="text-[10px] font-mono uppercase tracking-widest block text-cyan-400 font-bold">
-                        Standart Çıxış (stdout):
-                      </span>
-                      <pre className="text-gray-200 bg-gray-900/90 border border-gray-800 p-2.5 rounded-lg mt-1 font-mono text-xs overflow-x-auto whitespace-pre-wrap select-text">
-                        {outputConsole.output ? outputConsole.output : '(Çıxış yoxdur / print edilməyib)'}
-                      </pre>
-                    </div>
-
-                    {/* Stderr / Errors */}
-                    {outputConsole.error && (
-                      <div>
-                        <span className="text-[10px] font-mono text-rose-400 uppercase tracking-widest block font-bold">
-                          Xəta / Traceback (stderr):
-                        </span>
-                        <pre className="text-rose-300 bg-rose-950/40 border border-rose-900/60 p-2.5 rounded-lg mt-1 font-mono text-xs overflow-x-auto whitespace-pre-wrap select-text">
-                          {outputConsole.error}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            {renderTerminalPanel()}
           </div>
         </section>
+      </div>
+
+      {/* ---------------------------------------------------------------------
+          STICKY BOTTOM ACTION BAR ON MOBILE (< 768px)
+      ---------------------------------------------------------------------- */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0f172a]/95 backdrop-blur-md border-t border-gray-800 p-2.5 flex items-center space-x-2.5 shadow-2xl">
+        <button
+          type="button"
+          onClick={handleSubmitCode}
+          disabled={isSubmitting || status !== 'active' || isDisqualified}
+          className="flex-1 py-3 px-3 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-cyan-600 to-blue-600 active:scale-95 text-white flex items-center justify-center space-x-1.5 shadow-lg shadow-cyan-950/40 disabled:opacity-40 transition-all"
+        >
+          {isSubmitting ? (
+            <>
+              <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Yoxlanılır...</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>▶ Yoxla</span>
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSubmitCode}
+          disabled={isSubmitting || status !== 'active' || isDisqualified}
+          className="flex-1 py-3 px-3 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-emerald-600 to-teal-600 active:scale-95 text-white flex items-center justify-center space-x-1.5 shadow-lg shadow-emerald-950/40 disabled:opacity-40 transition-all"
+        >
+          {isSubmitting ? (
+            <>
+              <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Göndərilir...</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>✓ Təsdiqlə</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
