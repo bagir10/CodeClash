@@ -70,18 +70,37 @@ const corsOriginChecker = (origin, callback) => {
 
 function normalizeQuestion(q) {
   if (!q) return null;
-  const starter = q.starter_code || q.base_code || 'def solution():\n    pass\n';
+  const bankQ = QUESTION_BANK.find((item) => item.title === q.title || item.id === q.id);
+  const starter = bankQ ? bankQ.starter_code : (q.starter_code || q.base_code || 'def solution():\n    # Kodunuzu bura yazın\n    pass\n');
   const testCases = Array.isArray(q.test_cases) ? q.test_cases : [];
-  const visible = Array.isArray(q.visible_tests) && q.visible_tests.length > 0
+
+  const rawVisible = Array.isArray(q.visible_tests) && q.visible_tests.length > 0
     ? q.visible_tests
-    : testCases.slice(0, 2);
-  const hidden = Array.isArray(q.hidden_tests) && q.hidden_tests.length > 0
+    : (testCases.filter((t) => !t.isHidden).length > 0 ? testCases.filter((t) => !t.isHidden) : testCases.slice(0, 2));
+
+  const rawHidden = Array.isArray(q.hidden_tests) && q.hidden_tests.length > 0
     ? q.hidden_tests
-    : testCases.slice(2);
+    : (testCases.filter((t) => t.isHidden).length > 0 ? testCases.filter((t) => t.isHidden) : testCases.slice(2));
+
+  const visible = rawVisible.map((t, idx) => ({
+    input: t.input,
+    expectedOutput: t.expectedOutput ?? t.expected_output ?? t.expected,
+    testNum: idx + 1,
+    isHidden: false,
+  }));
+
+  const hidden = rawHidden.map((t, idx) => ({
+    input: t.input,
+    expectedOutput: t.expectedOutput ?? t.expected_output ?? t.expected,
+    testNum: visible.length + idx + 1,
+    isHidden: true,
+  }));
+
+  const combinedTestCases = [...visible, ...hidden];
 
   return {
     ...q,
-    id: q.id || `q-${Math.random().toString(36).slice(2, 9)}`,
+    id: q.id || (bankQ ? bankQ.id : `q-${Math.random().toString(36).slice(2, 9)}`),
     title: q.title || 'Sual',
     difficulty: q.difficulty || 'medium',
     topic: q.topic || 'General',
@@ -90,8 +109,28 @@ function normalizeQuestion(q) {
     base_code: starter,
     visible_tests: visible,
     hidden_tests: hidden,
-    test_cases: testCases.length > 0 ? testCases : [...visible, ...hidden],
+    test_cases: combinedTestCases,
     is_public: q.is_public ?? true,
+  };
+}
+
+/**
+ * Strips hidden_tests and test_cases (which contain expected answers) before emitting to clients
+ */
+function sanitizeQuestionForClient(q) {
+  if (!q) return null;
+  const normalized = normalizeQuestion(q);
+  return {
+    id: normalized.id,
+    title: normalized.title,
+    difficulty: normalized.difficulty,
+    topic: normalized.topic,
+    problem_statement: normalized.problem_statement,
+    starter_code: normalized.starter_code,
+    base_code: normalized.base_code,
+    visible_tests: normalized.visible_tests,
+    test_cases: normalized.visible_tests, // ONLY visible tests are sent to clients!
+    is_public: normalized.is_public,
   };
 }
 
@@ -188,9 +227,30 @@ async function autoSeedQuestions() {
   try {
     const { data: existing, error } = await supabaseAdmin
       .from('questions')
-      .select('id, title, difficulty, problem_statement, base_code, test_cases, is_public');
+      .select('id, title, difficulty, topic, problem_statement, starter_code, base_code, visible_tests, hidden_tests, test_cases, is_public');
 
     if (!error && Array.isArray(existing)) {
+      // Anti-cheat: Ensure existing rows in Supabase do not have working solutions in starter_code or base_code
+      for (const item of existing) {
+        const qBank = QUESTION_BANK.find((q) => q.title === item.title);
+        if (qBank) {
+          const hasSolution = (item.starter_code && !item.starter_code.includes('# Kodunuzu bura yazın') && item.starter_code.length > 80) ||
+                              (item.base_code && !item.base_code.includes('# Kodunuzu bura yazın') && item.base_code.length > 80);
+          if (hasSolution) {
+            console.log(`[SEED] Sanitizing starter_code for question "${item.title}" in Supabase...`);
+            await supabaseAdmin
+              .from('questions')
+              .update({
+                starter_code: qBank.starter_code,
+                base_code: qBank.starter_code,
+              })
+              .eq('id', item.id);
+            item.starter_code = qBank.starter_code;
+            item.base_code = qBank.starter_code;
+          }
+        }
+      }
+
       if (existing.length >= 30) {
         cachedQuestions = existing.map(normalizeQuestion);
         console.log(`[SEED] Loaded ${existing.length} questions from Supabase library.`);
@@ -207,9 +267,13 @@ async function autoSeedQuestions() {
               .insert({
                 title: q.title,
                 difficulty: q.difficulty,
+                topic: q.topic || 'General',
                 problem_statement: q.problem_statement,
-                base_code: q.starter_code || q.base_code,
-                test_cases: q.test_cases || [],
+                starter_code: q.starter_code,
+                base_code: q.starter_code,
+                visible_tests: q.visible_tests || [],
+                hidden_tests: q.hidden_tests || [],
+                test_cases: [...(q.visible_tests || []), ...(q.hidden_tests || [])],
                 is_public: true,
               })
               .select()
@@ -301,17 +365,17 @@ app.get('/api/questions', async (req, res) => {
   try {
     const { data: questions, error } = await supabaseAdmin
       .from('questions')
-      .select('id, title, difficulty, problem_statement, base_code, test_cases')
+      .select('id, title, difficulty, topic, problem_statement, base_code, starter_code, visible_tests, is_public')
       .order('created_at', { ascending: false });
 
     if (!error && questions && questions.length > 0) {
-      cachedQuestions = questions;
-      return res.status(200).json({ success: true, questions });
+      cachedQuestions = questions.map(normalizeQuestion);
+      return res.status(200).json({ success: true, questions: cachedQuestions.map(sanitizeQuestionForClient) });
     }
 
-    return res.status(200).json({ success: true, questions: cachedQuestions });
+    return res.status(200).json({ success: true, questions: cachedQuestions.map(sanitizeQuestionForClient) });
   } catch (err) {
-    return res.status(200).json({ success: true, questions: cachedQuestions });
+    return res.status(200).json({ success: true, questions: cachedQuestions.map(sanitizeQuestionForClient) });
   }
 });
 
@@ -441,7 +505,7 @@ app.post('/api/rooms', async (req, res) => {
         mode: newRoom.mode,
         duration_seconds: newRoom.duration_seconds,
         max_players: newRoom.max_players,
-        questions: newRoom.questions,
+        questions: newRoom.questions.map(sanitizeQuestionForClient),
       },
     });
   } catch (error) {
@@ -470,7 +534,7 @@ app.get('/api/rooms/:code', async (req, res) => {
           duration_seconds: room.duration_seconds,
           remainingSeconds: room.remainingSeconds,
           creator_id: room.creator_id,
-          questions: room.questions,
+          questions: room.questions.map(sanitizeQuestionForClient),
           participants: getSanitizedLeaderboard(room),
           leaderboard: room.leaderboard || getSanitizedLeaderboard(room),
           winner: room.winner || null,
@@ -506,7 +570,14 @@ app.get('/api/rooms/:code', async (req, res) => {
       };
       activeRooms.set(code, room);
 
-      return res.status(200).json({ success: true, room });
+      return res.status(200).json({
+        success: true,
+        room: {
+          ...room,
+          questions: room.questions.map(sanitizeQuestionForClient),
+          participants: [],
+        },
+      });
     }
 
     return res.status(404).json({ success: false, error: 'Daxil edilən kodla otaq tapılmadı.' });
@@ -624,7 +695,7 @@ function launchMatch(roomCode) {
   io.to(roomCode).emit('match_started', {
     roomCode,
     mode: room.mode,
-    questions: room.questions,
+    questions: room.questions.map(sanitizeQuestionForClient),
     durationSeconds: room.duration_seconds,
     startedAt: room.started_at,
     participants: Array.from(room.participants.values()),
@@ -732,7 +803,7 @@ io.on('connection', (socket) => {
           status: room.status,
           durationSeconds: room.duration_seconds,
           remainingSeconds: room.remainingSeconds,
-          questions: room.questions,
+          questions: room.questions.map(sanitizeQuestionForClient),
           participants: sanitizedLeaderboard,
           myParticipant: {
             solvedQuestionIds: participant.solvedQuestionIds || [],
@@ -819,7 +890,20 @@ io.on('connection', (socket) => {
 
       const execResult = await executePythonCode(code, targetQuestion.test_cases);
 
-      if (execResult.isCorrect && participant) {
+      const totalTests = typeof execResult.totalTests === 'number'
+        ? execResult.totalTests
+        : (targetQuestion.test_cases?.length || 0);
+      const passedTests = typeof execResult.totalPassedTests === 'number'
+        ? execResult.totalPassedTests
+        : 0;
+
+      // Strict anti-cheat: Must have > 0 tests and ALL visible + hidden tests must pass with zero error
+      const isSolved = Boolean(execResult.isCorrect) &&
+        totalTests > 0 &&
+        passedTests === totalTests &&
+        !execResult.error;
+
+      if (isSolved && participant) {
         if (!participant.solvedQuestionIds.includes(questionId)) {
           participant.solvedQuestionIds.push(questionId);
           participant.totalTimeMs += execResult.executionTimeMs || 0;
@@ -829,12 +913,12 @@ io.on('connection', (socket) => {
       if (typeof callback === 'function') {
         callback({
           success: true,
-          isCorrect: execResult.isCorrect,
+          isCorrect: isSolved,
           executionTimeMs: execResult.executionTimeMs,
           output: execResult.output,
           error: execResult.error,
-          totalPassedTests: execResult.totalPassedTests ?? (execResult.isCorrect ? (targetQuestion.test_cases?.length || 1) : 0),
-          totalTests: execResult.totalTests ?? (targetQuestion.test_cases?.length || 1),
+          totalPassedTests: passedTests,
+          totalTests,
           testResults: execResult.testResults || [],
           solvedCount: participant ? participant.solvedQuestionIds.length : 0,
           totalQuestions: room.questions.length,
@@ -848,7 +932,7 @@ io.on('connection', (socket) => {
         solvedCount: participant ? participant.solvedQuestionIds.length : 0,
         totalQuestions: room.questions.length,
         questionId,
-        isCorrect: execResult.isCorrect,
+        isCorrect: isSolved,
       });
 
       const sortedLeaderboard = getSanitizedLeaderboard(room);

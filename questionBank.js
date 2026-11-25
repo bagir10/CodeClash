@@ -27,14 +27,8 @@ Nümunə 2:
 Giriş: nums = [3, 2, 4], target = 6
 Çıxış: [1, 2]`,
     starter_code: `def solution(nums, target):
-    # nums: List[int], target: int -> List[int]
-    seen = {}
-    for idx, num in enumerate(nums):
-        diff = target - num
-        if diff in seen:
-            return [seen[diff], idx]
-        seen[num] = idx
-    return []
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[2, 7, 11, 15], 9', expectedOutput: '[0, 1]' },
@@ -58,10 +52,8 @@ Nümunə:
 Giriş: [0, 1, 0, 3, 12]
 Çıxış: [1, 3, 12, 0, 0]`,
     starter_code: `def solution(nums):
-    # nums: List[int] -> List[int]
-    res = [x for x in nums if x != 0]
-    res += [0] * (len(nums) - len(res))
-    return res
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[0, 1, 0, 3, 12]', expectedOutput: '[1, 3, 12, 0, 0]' },
@@ -88,8 +80,8 @@ Nümunə 2:
 Giriş: [1, 2, 3, 4]
 Çıxış: False`,
     starter_code: `def solution(nums):
-    # nums: List[int] -> bool
-    return len(nums) != len(set(nums))
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[1, 2, 3, 1]', expectedOutput: 'True' },
@@ -113,13 +105,8 @@ Nümunə:
 Giriş: [-2, 1, -3, 4, -1, 2, 1, -5, 4]
 Çıxış: 6  (Çünki [4, -1, 2, 1] alt massivinin cəmi 6-dır)`,
     starter_code: `def solution(nums):
-    # nums: List[int] -> int
-    max_so_far = nums[0]
-    curr_max = nums[0]
-    for x in nums[1:]:
-        curr_max = max(x, curr_max + x)
-        max_so_far = max(max_so_far, curr_max)
-    return max_so_far
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[-2, 1, -3, 4, -1, 2, 1, -5, 4]', expectedOutput: '6' },
@@ -142,10 +129,8 @@ Nümunə:
 Giriş: [3, 0, 1]
 Çıxış: 2 (Aralıq 0-3, 2 çatışmır)`,
     starter_code: `def solution(nums):
-    # nums: List[int] -> int
-    n = len(nums)
-    expected_sum = n * (n + 1) // 2
-    return expected_sum - sum(nums)
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[3, 0, 1]', expectedOutput: '2' },
@@ -169,17 +154,8 @@ Nümunə:
 Giriş: [7, 1, 5, 3, 6, 4]
 Çıxış: 5 (2-ci gün 1-ə alıb 5-ci gün 6-ya satmaqla 6-1=5 qazanc)`,
     starter_code: `def solution(prices):
-    # prices: List[int] -> int
-    if not prices:
-        return 0
-    min_price = float('inf')
-    max_profit = 0
-    for price in prices:
-        if price < min_price:
-            min_price = price
-        elif price - min_price > max_profit:
-            max_profit = price - min_price
-    return max_profit
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[7, 1, 5, 3, 6, 4]', expectedOutput: '5' },
@@ -207,12 +183,8 @@ Nümunə 2:
 Giriş: [1, 2], [3, 4]
 Çıxış: 2.5 (Ortadakı 2 və 3-ün ədədi ortası)`,
     starter_code: `def solution(nums1, nums2):
-    # nums1: List[int], nums2: List[int] -> float
-    merged = sorted(nums1 + nums2)
-    n = len(merged)
-    if n % 2 == 1:
-        return float(merged[n // 2])
-    return (merged[n // 2 - 1] + merged[n // 2]) / 2.0
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[1, 3], [2]', expectedOutput: '2.0' },
@@ -240,9 +212,8 @@ Nümunə:
 Giriş: "A man, a plan, a canal: Panama"
 Çıxış: True`,
     starter_code: `def solution(s):
-    # s: str -> bool
-    cleaned = ''.join(c.lower() for c in str(s) if c.isalnum())
-    return cleaned == cleaned[::-1]
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '"A man, a plan, a canal: Panama"', expectedOutput: 'True' },
@@ -270,8 +241,8 @@ Nümunə 2:
 Giriş: "rat", "car"
 Çıxış: False`,
     starter_code: `def solution(s, t):
-    # s: str, t: str -> bool
-    return sorted(str(s)) == sorted(str(t))
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '"anagram", "nagaram"', expectedOutput: 'True' },
@@ -295,16 +266,8 @@ Nümunə:
 Giriş: ["flower", "flow", "flight"]
 Çıxış: "fl"`,
     starter_code: `def solution(strs):
-    # strs: List[str] -> str
-    if not strs:
-        return ""
-    prefix = strs[0]
-    for s in strs[1:]:
-        while not s.startswith(prefix):
-            prefix = prefix[:-1]
-            if not prefix:
-                return ""
-    return prefix
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '["flower", "flow", "flight"]', expectedOutput: '"fl"' },
@@ -327,9 +290,8 @@ Nümunə:
 Giriş: "  the sky is   blue  "
 Çıxış: "blue is sky the"`,
     starter_code: `def solution(s):
-    # s: str -> str
-    words = s.strip().split()
-    return " ".join(reversed(words))
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '"  the sky is   blue  "', expectedOutput: '"blue is sky the"' },
@@ -352,20 +314,8 @@ Nümunə:
 Giriş: "aabcccccaaa"
 Çıxış: "a2b1c5a3"`,
     starter_code: `def solution(s):
-    # s: str -> str
-    if not s:
-        return ""
-    compressed = []
-    count = 1
-    for i in range(1, len(s)):
-        if s[i] == s[i - 1]:
-            count += 1
-        else:
-            compressed.append(f"{s[i-1]}{count}")
-            count = 1
-    compressed.append(f"{s[-1]}{count}")
-    res = "".join(compressed)
-    return res if len(res) < len(s) else s
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '"aabcccccaaa"', expectedOutput: '"a2b1c5a3"' },
@@ -392,13 +342,8 @@ Nümunə 2:
 Giriş: "loveleetcode"
 Çıxış: 2 ('v' simvolu)`,
     starter_code: `def solution(s):
-    # s: str -> int
-    from collections import Counter
-    counts = Counter(s)
-    for idx, ch in enumerate(s):
-        if counts[ch] == 1:
-            return idx
-    return -1
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '"leetcode"', expectedOutput: '0' },
@@ -425,16 +370,8 @@ Nümunə 2:
 Giriş: "bbbbb"
 Çıxış: 1 ("b")`,
     starter_code: `def solution(s):
-    # s: str -> int
-    used = {}
-    max_len = 0
-    left = 0
-    for right, ch in enumerate(s):
-        if ch in used and used[ch] >= left:
-            left = used[ch] + 1
-        used[ch] = right
-        max_len = max(max_len, right - left + 1)
-    return max_len
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '"abcabcbb"', expectedOutput: '3' },
@@ -462,13 +399,8 @@ Nümunə:
 Giriş: 5
 Çıxış: 120 (5 * 4 * 3 * 2 * 1)`,
     starter_code: `def solution(n):
-    # n: int -> int
-    if n <= 1:
-        return 1
-    total = 1
-    for i in range(2, n + 1):
-        total *= i
-    return total
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '5', expectedOutput: '120' },
@@ -492,8 +424,8 @@ Nümunə:
 Giriş: 12345
 Çıxış: 15 (1 + 2 + 3 + 4 + 5)`,
     starter_code: `def solution(n):
-    # n: int -> int
-    return sum(int(d) for d in str(abs(n)))
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '12345', expectedOutput: '15' },
@@ -520,19 +452,8 @@ Nümunə 2:
 Giriş: 4
 Çıxış: False`,
     starter_code: `def solution(n):
-    # n: int -> bool
-    if n <= 1:
-        return False
-    if n <= 3:
-        return True
-    if n % 2 == 0 or n % 3 == 0:
-        return False
-    i = 5
-    while i * i <= n:
-        if n % i == 0 or n % (i + 2) == 0:
-            return False
-        i += 6
-    return True
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '7', expectedOutput: 'True' },
@@ -557,15 +478,8 @@ Nümunə:
 Giriş: 6
 Çıxış: 8 (0, 1, 1, 2, 3, 5, 8)`,
     starter_code: `def solution(n):
-    # n: int -> int
-    if n <= 0:
-        return 0
-    if n == 1:
-        return 1
-    a, b = 0, 1
-    for _ in range(2, n + 1):
-        a, b = b, a + b
-    return b
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '6', expectedOutput: '8' },
@@ -589,10 +503,8 @@ Nümunə:
 Giriş: 48, 18
 Çıxış: 6`,
     starter_code: `def solution(a, b):
-    # a: int, b: int -> int
-    while b:
-        a, b = b, a % b
-    return a
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '48, 18', expectedOutput: '6' },
@@ -618,18 +530,8 @@ Nümunə:
 Giriş: "MCMXCIV"
 Çıxış: 1994 (M=1000 + CM=900 + XC=90 + IV=4)`,
     starter_code: `def solution(s):
-    # s: str -> int
-    vals = {'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}
-    total = 0
-    prev = 0
-    for ch in reversed(s):
-        curr = vals.get(ch, 0)
-        if curr >= prev:
-            total += curr
-        else:
-            total -= curr
-        prev = curr
-    return total
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '"MCMXCIV"', expectedOutput: '1994' },
@@ -661,18 +563,8 @@ Nümunə:
 Giriş: 5
 Çıxış: ["1", "2", "Fizz", "4", "Buzz"]`,
     starter_code: `def solution(n):
-    # n: int -> List[str]
-    res = []
-    for i in range(1, n + 1):
-        if i % 15 == 0:
-            res.append("FizzBuzz")
-        elif i % 3 == 0:
-            res.append("Fizz")
-        elif i % 5 == 0:
-            res.append("Buzz")
-        else:
-            res.append(str(i))
-    return res
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '5', expectedOutput: '["1", "2", "Fizz", "4", "Buzz"]' },
@@ -695,11 +587,8 @@ Nümunə:
 Giriş: [4, 1, 2, 1, 2]
 Çıxış: 4`,
     starter_code: `def solution(nums):
-    # nums: List[int] -> int
-    res = 0
-    for x in nums:
-        res ^= x
-    return res
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[4, 1, 2, 1, 2]', expectedOutput: '4' },
@@ -727,12 +616,8 @@ Giriş: 2000 -> Çıxış: True
 Nümunə 2:
 Giriş: 1900 -> Çıxış: False`,
     starter_code: `def solution(year):
-    # year: int -> bool
-    if year % 400 == 0:
-        return True
-    if year % 100 == 0:
-        return False
-    return year % 4 == 0
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '2000', expectedOutput: 'True' },
@@ -756,12 +641,8 @@ Nümunə:
 Giriş: 11 (İkilik təsviri: 1011)
 Çıxış: 3`,
     starter_code: `def solution(n):
-    # n: int -> int
-    count = 0
-    while n:
-        n &= (n - 1)
-        count += 1
-    return count
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '11', expectedOutput: '3' },
@@ -784,17 +665,8 @@ Nümunə:
 Giriş: [1, 8, 6, 2, 5, 4, 8, 3, 7]
 Çıxış: 49 (İndeks 1 (hündürlük 8) və indeks 8 (hündürlük 7) arasında: min(8, 7) * (8 - 1) = 49)`,
     starter_code: `def solution(height):
-    # height: List[int] -> int
-    left, right = 0, len(height) - 1
-    max_area = 0
-    while left < right:
-        h = min(height[left], height[right])
-        max_area = max(max_area, h * (right - left))
-        if height[left] < height[right]:
-            left += 1
-        else:
-            right -= 1
-    return max_area
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[1, 8, 6, 2, 5, 4, 8, 3, 7]', expectedOutput: '49' },
@@ -821,17 +693,8 @@ Nümunə:
 Giriş: nums = [-1, 0, 3, 5, 9, 12], target = 9
 Çıxış: 4`,
     starter_code: `def solution(nums, target):
-    # nums: List[int], target: int -> int
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[-1, 0, 3, 5, 9, 12], 9', expectedOutput: '4' },
@@ -855,14 +718,8 @@ Nümunə:
 Giriş: [2, 2, 1, 1, 1, 2, 2]
 Çıxış: 2`,
     starter_code: `def solution(nums):
-    # nums: List[int] -> int
-    candidate = None
-    count = 0
-    for num in nums:
-        if count == 0:
-            candidate = num
-        count += (1 if num == candidate else -1)
-    return candidate
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[2, 2, 1, 1, 1, 2, 2]', expectedOutput: '2' },
@@ -885,13 +742,8 @@ Nümunə:
 Giriş: nums = [1, 2, 3, 4, 5, 6, 7], k = 3
 Çıxış: [5, 6, 7, 1, 2, 3, 4]`,
     starter_code: `def solution(nums, k):
-    # nums: List[int], k: int -> List[int]
-    if not nums:
-        return []
-    k = k % len(nums)
-    if k == 0:
-        return nums
-    return nums[-k:] + nums[:-k]
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[1, 2, 3, 4, 5, 6, 7], 3', expectedOutput: '[5, 6, 7, 1, 2, 3, 4]' },
@@ -914,14 +766,8 @@ Nümunə:
 Giriş: "abbaca"
 Çıxış: "ca" (Əvvəl "bb" silinir -> "aaca", sonra "aa" silinir -> "ca")`,
     starter_code: `def solution(s):
-    # s: str -> str
-    stack = []
-    for ch in s:
-        if stack and stack[-1] == ch:
-            stack.pop()
-        else:
-            stack.append(ch)
-    return "".join(stack)
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '"abbaca"', expectedOutput: '"ca"' },
@@ -944,18 +790,8 @@ Nümunə:
 Giriş: [[1, 3], [2, 6], [8, 10], [15, 18]]
 Çıxış: [[1, 6], [8, 10], [15, 18]] ([1,3] və [2,6] kəsişir -> [1,6])`,
     starter_code: `def solution(intervals):
-    # intervals: List[List[int]] -> List[List[int]]
-    if not intervals:
-        return []
-    intervals.sort(key=lambda x: x[0])
-    merged = [intervals[0]]
-    for curr in intervals[1:]:
-        prev = merged[-1]
-        if curr[0] <= prev[1]:
-            prev[1] = max(prev[1], curr[1])
-        else:
-            merged.append(curr)
-    return merged
+    # Kodunuzu bura yazın
+    pass
 `,
     visible_tests: [
       { input: '[[1, 3], [2, 6], [8, 10], [15, 18]]', expectedOutput: '[[1, 6], [8, 10], [15, 18]]' },

@@ -745,7 +745,7 @@ export default function Arena({
                           : 'bg-[#111827] border-gray-800 text-gray-400 hover:text-white'
                       }`}
                     >
-                      <span>Test #{tc.testNum || idx + 1} {tc.isHidden ? '(Gizli)' : ''}</span>
+                      <span>Test #{tc.testNum || tc.index || idx + 1} {tc.isHidden ? '(Gizli)' : ''}</span>
                       <span
                         className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
                           tc.passed
@@ -778,7 +778,7 @@ export default function Arena({
                   <div className="bg-[#111827] border border-gray-800/80 rounded-xl p-3 space-y-2 text-xs">
                     <div className="flex items-center justify-between pb-1.5 border-b border-gray-800/60">
                       <span className="font-bold text-gray-300">
-                        Test #{activeTc.testNum || selectedTestCaseIndex + 1} Detalları {activeTc.isHidden ? '(Gizli Test)' : ''}
+                        Test #{activeTc.testNum || activeTc.index || selectedTestCaseIndex + 1} Detalları {activeTc.isHidden ? '(Gizli Test)' : ''}
                       </span>
                       <span
                         className={`font-black text-xs ${
@@ -789,43 +789,63 @@ export default function Arena({
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono">
-                      {/* Input */}
-                      <div>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
-                          Giriş (Input):
-                        </span>
-                        <pre className="bg-gray-950/80 border border-gray-800 p-2 rounded-lg mt-1 text-gray-300 text-[11px] overflow-x-auto whitespace-pre-wrap select-text">
-                          {activeTc.input}
-                        </pre>
+                    {activeTc.isHidden ? (
+                      <div className="p-4 bg-gray-950/80 border border-gray-800 rounded-lg text-center space-y-2 font-sans">
+                        <div className="text-sm font-semibold text-gray-300 flex items-center justify-center space-x-2">
+                          <span>🔒 Gizli test — giriş və gözlənilən cavab gizlədilib</span>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Nəticə:{' '}
+                          <span
+                            className={`px-2 py-0.5 rounded font-black text-xs ${
+                              activeTc.passed
+                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-600/40'
+                                : 'bg-rose-950 text-rose-400 border border-rose-600/40'
+                            }`}
+                          >
+                            {activeTc.passed ? '✓ Keçdi' : '✕ Xəta'}
+                          </span>
+                        </div>
                       </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono">
+                        {/* Input */}
+                        <div>
+                          <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
+                            Giriş (Input):
+                          </span>
+                          <pre className="bg-gray-950/80 border border-gray-800 p-2 rounded-lg mt-1 text-gray-300 text-[11px] overflow-x-auto whitespace-pre-wrap select-text">
+                            {activeTc.input}
+                          </pre>
+                        </div>
 
-                      {/* Expected Output */}
-                      <div>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
-                          Gözlənilən Çıxış:
-                        </span>
-                        <pre className="bg-gray-950/80 border border-gray-800 p-2 rounded-lg mt-1 text-emerald-300 text-[11px] overflow-x-auto whitespace-pre-wrap select-text">
-                          {activeTc.expected}
-                        </pre>
-                      </div>
+                        {/* Expected Output */}
+                        <div>
+                          <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
+                            Gözlənilən Çıxış:
+                          </span>
+                          <pre className="bg-gray-950/80 border border-gray-800 p-2 rounded-lg mt-1 text-emerald-300 text-[11px] overflow-x-auto whitespace-pre-wrap select-text">
+                            {activeTc.expected}
+                          </pre>
+                        </div>
 
-                      {/* Actual Output */}
-                      <div>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
-                          Sənin Çıxışın:
-                        </span>
-                        <pre
-                          className={`bg-gray-950/80 border p-2 rounded-lg mt-1 text-[11px] overflow-x-auto whitespace-pre-wrap select-text ${
-                            activeTc.passed
-                              ? 'border-gray-800 text-emerald-300'
-                              : 'border-rose-900/60 text-rose-300'
-                          }`}
-                        >
-                          {activeTc.actual || '(Çıxış yoxdur)'}
-                        </pre>
+                        {/* Actual Output */}
+                        <div>
+                          <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-bold">
+                            Sənin Çıxışın:
+                          </span>
+                          <pre
+                            className={`bg-gray-950/80 border p-2 rounded-lg mt-1 text-[11px] overflow-x-auto whitespace-pre-wrap select-text ${
+                              activeTc.passed
+                                ? 'border-gray-800 text-emerald-300'
+                                : 'border-rose-900/60 text-rose-300'
+                            }`}
+                          >
+                            {activeTc.actual || '(Çıxış yoxdur)'}
+                          </pre>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })()}

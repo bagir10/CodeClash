@@ -80,13 +80,33 @@ def safe_literal(val_str):
     except Exception:
         return False, s
 
+def is_none_or_missing(val):
+    if val is None:
+        return True
+    s = str(val).strip().lower()
+    return s in ('none', 'null')
+
 def values_equal(actual, expected_raw):
-    if expected_raw is None:
-        return actual is None
+    # Strict rule: If expected answer is not None, but user output is None or missing -> strictly False
+    if not is_none_or_missing(expected_raw) and is_none_or_missing(actual):
+        return False
+
+    if is_none_or_missing(expected_raw):
+        return is_none_or_missing(actual)
 
     # 1. Direct or safe_literal comparison
     ok_exp, exp_val = safe_literal(expected_raw)
     if ok_exp:
+        # Strict boolean check (prevent True == 1 or False == 0 mismatches if strictly expecting bool)
+        if isinstance(exp_val, bool):
+            if actual is True and exp_val is True:
+                return True
+            if actual is False and exp_val is False:
+                return True
+            if isinstance(actual, str) and actual.strip().lower() == str(exp_val).lower():
+                return True
+            return False
+
         if actual == exp_val:
             return True
         if isinstance(actual, (list, tuple)) and isinstance(exp_val, (list, tuple)):
@@ -106,7 +126,7 @@ def values_equal(actual, expected_raw):
     # 2. String normalized comparison
     norm_act = normalize_text(actual)
     norm_exp = normalize_text(expected_raw)
-    if norm_act == norm_exp:
+    if norm_act != '' and norm_act == norm_exp:
         return True
 
     # 3. Strip wrapping quotes if string
@@ -283,9 +303,9 @@ def main():
 
         if not test_cases:
             print(json.dumps({
-                'isCorrect': True,
-                'output': buf.getvalue().strip() or 'Funksiya xətasız yükləndi.',
-                'error': None,
+                'isCorrect': False,
+                'output': '(test nümunələri tapılmadı)',
+                'error': 'Yoxlama üçün heç bir test nümunəsi təyin edilməyib.',
                 'totalPassedTests': 0,
                 'totalTests': 0,
                 'testResults': []
@@ -310,16 +330,26 @@ def main():
                 all_passed = False
                 err_text = f'Test #{idx + 1} icra xətası:\\n{traceback.format_exc(limit=3)}'
                 if not first_error_msg:
-                    first_error_msg = err_text
-                test_results.append({
-                    'testNum': idx + 1,
-                    'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
-                    'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
-                    'actual': printed or '(icra xətası)',
-                    'passed': False,
-                    'executionTimeMs': tc_time_ms,
-                    'isHidden': is_hidden,
-                })
+                    first_error_msg = 'Gizli test icrasında xəta baş verdi.' if is_hidden else err_text
+                if is_hidden:
+                    test_results.append({
+                        'index': idx + 1,
+                        'testNum': idx + 1,
+                        'isHidden': True,
+                        'passed': False,
+                        'executionTimeMs': tc_time_ms,
+                    })
+                else:
+                    test_results.append({
+                        'index': idx + 1,
+                        'testNum': idx + 1,
+                        'input': str(raw_in),
+                        'expected': str(expected),
+                        'actual': printed or '(icra xətası)',
+                        'passed': False,
+                        'executionTimeMs': tc_time_ms,
+                        'isHidden': False,
+                    })
                 break
 
             printed = '\\n'.join(filter(None, [buf.getvalue().strip(), call_buf.getvalue().strip()]))
@@ -333,24 +363,39 @@ def main():
 
             matched = False
             if expected is not None:
-                if values_equal(res, expected):
+                if res is not None and values_equal(res, expected):
                     matched = True
                 elif res is None and printed and values_equal(printed, expected):
                     matched = True
             else:
-                matched = True
+                if is_none_or_missing(expected) and is_none_or_missing(res) and not printed:
+                    matched = True
+
+            # Strict anti-cheat: If user returned None and printed nothing (e.g. unmodified 'pass'), and answer was expected
+            if res is None and not printed and not is_none_or_missing(expected):
+                matched = False
 
             actual_show = repr(res) if res is not None else (printed if printed else 'None')
 
-            test_results.append({
-                'testNum': idx + 1,
-                'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
-                'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
-                'actual': str(actual_show) if (matched or not is_hidden) else "(Gizli test nəticəsi gizlədildi)",
-                'passed': matched,
-                'executionTimeMs': tc_time_ms,
-                'isHidden': is_hidden,
-            })
+            if is_hidden:
+                test_results.append({
+                    'index': idx + 1,
+                    'testNum': idx + 1,
+                    'isHidden': True,
+                    'passed': matched,
+                    'executionTimeMs': tc_time_ms,
+                })
+            else:
+                test_results.append({
+                    'index': idx + 1,
+                    'testNum': idx + 1,
+                    'input': str(raw_in),
+                    'expected': str(expected),
+                    'actual': str(actual_show),
+                    'passed': matched,
+                    'executionTimeMs': tc_time_ms,
+                    'isHidden': False,
+                })
 
             if not matched:
                 all_passed = False
@@ -361,13 +406,20 @@ def main():
                         first_error_msg = f'Test #{idx + 1} uyğun gəlmədi.\\nGiriş: {raw_in}\\nGözlənilən: {expected}\\nSənin nəticən: {actual_show}'
                 break
 
-        passed_count = sum(1 for t in test_results if t['passed'])
+        passed_count = sum(1 for t in test_results if t.get('passed') is True)
+        total_count = len(test_cases)
+        is_correct = bool(
+            all_passed
+            and total_count > 0
+            and passed_count == total_count
+            and not first_error_msg
+        )
         print(json.dumps({
-            'isCorrect': all_passed and passed_count == len(test_cases),
-            'output': f'Testlər: {passed_count}/{len(test_cases)} keçdi!\\n{last_display}' if all_passed else last_display,
+            'isCorrect': is_correct,
+            'output': f'Testlər: {passed_count}/{total_count} keçdi!\\n{last_display}' if is_correct else last_display,
             'error': first_error_msg,
             'totalPassedTests': passed_count,
-            'totalTests': len(test_cases),
+            'totalTests': total_count,
             'testResults': test_results,
         }))
         return
@@ -376,7 +428,15 @@ def main():
     # REJİM 2: Standart input() / print() yoxlaması (Competitive Programming)
     # =========================================================================
     if not test_cases:
-        test_cases = [{'input': '', 'expected_output': None}]
+        print(json.dumps({
+            'isCorrect': False,
+            'output': '(test nümunələri tapılmadı)',
+            'error': 'Yoxlama üçün heç bir test nümunəsi təyin edilməyib.',
+            'totalPassedTests': 0,
+            'totalTests': 0,
+            'testResults': []
+        }))
+        return
 
     for idx, tc in enumerate(test_cases):
         raw_in = str(tc.get('input', ''))
@@ -398,28 +458,48 @@ def main():
         except subprocess.TimeoutExpired:
             all_passed = False
             first_error_msg = f'Test #{idx + 1}: Vaxt limiti aşıldı (Time Limit Exceeded - 3.0s).'
-            test_results.append({
-                'testNum': idx + 1,
-                'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
-                'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
-                'actual': '(vaxt limiti aşılıb)',
-                'passed': False,
-                'executionTimeMs': 3000,
-                'isHidden': is_hidden,
-            })
+            if is_hidden:
+                test_results.append({
+                    'index': idx + 1,
+                    'testNum': idx + 1,
+                    'isHidden': True,
+                    'passed': False,
+                    'executionTimeMs': 3000,
+                })
+            else:
+                test_results.append({
+                    'index': idx + 1,
+                    'testNum': idx + 1,
+                    'input': str(raw_in),
+                    'expected': str(expected),
+                    'actual': '(vaxt limiti aşılıb)',
+                    'passed': False,
+                    'executionTimeMs': 3000,
+                    'isHidden': False,
+                })
             break
         except Exception as e:
             all_passed = False
             first_error_msg = f'Test #{idx + 1} başlana bilmədi: {e}'
-            test_results.append({
-                'testNum': idx + 1,
-                'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
-                'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
-                'actual': '(icra xətası)',
-                'passed': False,
-                'executionTimeMs': 1,
-                'isHidden': is_hidden,
-            })
+            if is_hidden:
+                test_results.append({
+                    'index': idx + 1,
+                    'testNum': idx + 1,
+                    'isHidden': True,
+                    'passed': False,
+                    'executionTimeMs': 1,
+                })
+            else:
+                test_results.append({
+                    'index': idx + 1,
+                    'testNum': idx + 1,
+                    'input': str(raw_in),
+                    'expected': str(expected),
+                    'actual': '(icra xətası)',
+                    'passed': False,
+                    'executionTimeMs': 1,
+                    'isHidden': False,
+                })
             break
 
         last_out = proc.stdout.strip()
@@ -427,15 +507,25 @@ def main():
             all_passed = False
             err_msg = proc.stderr.strip() or 'İcra zamanı xəta baş verdi.'
             first_error_msg = f'Test #{idx + 1} icra xətası:\\n{err_msg}'
-            test_results.append({
-                'testNum': idx + 1,
-                'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
-                'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
-                'actual': last_out or '(xəta baş verdi)',
-                'passed': False,
-                'executionTimeMs': tc_time_ms,
-                'isHidden': is_hidden,
-            })
+            if is_hidden:
+                test_results.append({
+                    'index': idx + 1,
+                    'testNum': idx + 1,
+                    'isHidden': True,
+                    'passed': False,
+                    'executionTimeMs': tc_time_ms,
+                })
+            else:
+                test_results.append({
+                    'index': idx + 1,
+                    'testNum': idx + 1,
+                    'input': str(raw_in),
+                    'expected': str(expected),
+                    'actual': last_out or '(xəta baş verdi)',
+                    'passed': False,
+                    'executionTimeMs': tc_time_ms,
+                    'isHidden': False,
+                })
             break
 
         matched = True
@@ -448,26 +538,43 @@ def main():
                 else:
                     first_error_msg = f'Test #{idx + 1} uyğun gəlmədi.\\nGiriş: {raw_in}\\nGözlənilən: {expected}\\nSənin nəticən: {last_out}'
 
-        test_results.append({
-            'testNum': idx + 1,
-            'input': str(raw_in) if not is_hidden else "(Gizli Test Girişi)",
-            'expected': str(expected) if not is_hidden else "(Gizli Test Gözləniləni)",
-            'actual': last_out if (matched or not is_hidden) else "(Gizli test nəticəsi gizlədildi)",
-            'passed': matched,
-            'executionTimeMs': tc_time_ms,
-            'isHidden': is_hidden,
-        })
+        if is_hidden:
+            test_results.append({
+                'index': idx + 1,
+                'testNum': idx + 1,
+                'isHidden': True,
+                'passed': matched,
+                'executionTimeMs': tc_time_ms,
+            })
+        else:
+            test_results.append({
+                'index': idx + 1,
+                'testNum': idx + 1,
+                'input': str(raw_in),
+                'expected': str(expected),
+                'actual': last_out,
+                'passed': matched,
+                'executionTimeMs': tc_time_ms,
+                'isHidden': False,
+            })
 
         if not matched:
             break
 
     passed_count = sum(1 for t in test_results if t['passed'])
+    total_count = len(test_cases)
+    is_correct = bool(
+        all_passed
+        and total_count > 0
+        and passed_count == total_count
+        and not first_error_msg
+    )
     print(json.dumps({
-        'isCorrect': all_passed and passed_count == len(test_cases),
-        'output': f'Testlər: {passed_count}/{len(test_cases)} keçdi!\\n{last_out}' if all_passed else (last_out or '(çıxış yoxdur)'),
+        'isCorrect': is_correct,
+        'output': f'Testlər: {passed_count}/{total_count} keçdi!\\n{last_out}' if is_correct else (last_out or '(çıxış yoxdur)'),
         'error': first_error_msg,
         'totalPassedTests': passed_count,
-        'totalTests': len(test_cases),
+        'totalTests': total_count,
         'testResults': test_results,
     }))
 
@@ -591,15 +698,29 @@ async function _runPythonProcess(codeOrPayload, rawTestCases = []) {
                     error: 'İcra müddəti limiti aşıldı (Time Limit Exceeded - 3 saniyə). Sonsuz dövr (infinite loop) və ya ağır hesablama aşkar edildi.',
                     totalPassedTests: 0,
                     totalTests: parsedCases.length,
-                    testResults: parsedCases.map((tc, idx) => ({
-                        testNum: idx + 1,
-                        input: tc.isHidden ? '(Gizli Test)' : String(tc.input || ''),
-                        expected: tc.isHidden ? '(Gizli Test)' : String(tc.expectedOutput || tc.expected_output || ''),
-                        actual: '(vaxt limiti aşılıb)',
-                        passed: false,
-                        executionTimeMs: 3000,
-                        isHidden: Boolean(tc.isHidden),
-                    })),
+                    testResults: parsedCases.map((tc, idx) => {
+                        const isHidden = Boolean(tc.isHidden);
+                        const testNum = idx + 1;
+                        if (isHidden) {
+                            return {
+                                index: testNum,
+                                testNum,
+                                isHidden: true,
+                                passed: false,
+                                executionTimeMs: 3000,
+                            };
+                        }
+                        return {
+                            index: testNum,
+                            testNum,
+                            input: String(tc.input || ''),
+                            expected: String(tc.expectedOutput || tc.expected_output || ''),
+                            actual: '(vaxt limiti aşılıb)',
+                            passed: false,
+                            executionTimeMs: 3000,
+                            isHidden: false,
+                        };
+                    }),
                 });
             }, 3500);
 
@@ -637,14 +758,42 @@ async function _runPythonProcess(codeOrPayload, rawTestCases = []) {
                 if (trimmedOut) {
                     try {
                         const parsed = JSON.parse(trimmedOut);
+                        const totalPassedTests = typeof parsed.totalPassedTests === 'number' ? parsed.totalPassedTests : 0;
+                        const totalTests = typeof parsed.totalTests === 'number' ? parsed.totalTests : parsedCases.length;
+                        const isCorrect = Boolean(parsed.isCorrect) && totalTests > 0 && totalPassedTests === totalTests && !parsed.error;
+
+                        const sanitizedTestResults = (Array.isArray(parsed.testResults) ? parsed.testResults : []).map((tc, idx) => {
+                            const isHidden = Boolean(tc.isHidden);
+                            const testNum = tc.testNum || tc.index || (idx + 1);
+                            if (isHidden) {
+                                return {
+                                    index: testNum,
+                                    testNum,
+                                    isHidden: true,
+                                    passed: Boolean(tc.passed),
+                                    executionTimeMs: typeof tc.executionTimeMs === 'number' ? tc.executionTimeMs : 0,
+                                };
+                            }
+                            return {
+                                index: testNum,
+                                testNum,
+                                input: String(tc.input ?? ''),
+                                expected: String(tc.expected ?? ''),
+                                actual: String(tc.actual ?? ''),
+                                passed: Boolean(tc.passed),
+                                executionTimeMs: typeof tc.executionTimeMs === 'number' ? tc.executionTimeMs : 0,
+                                isHidden: false,
+                            };
+                        });
+
                         resolve({
-                            isCorrect: Boolean(parsed.isCorrect),
+                            isCorrect,
                             executionTimeMs: typeof parsed.executionTimeMs === 'number' ? parsed.executionTimeMs : executionTimeMs,
                             output: typeof parsed.output === 'string' ? parsed.output : '(çıxış yoxdur)',
                             error: parsed.error ? String(parsed.error) : null,
-                            totalPassedTests: typeof parsed.totalPassedTests === 'number' ? parsed.totalPassedTests : 0,
-                            totalTests: typeof parsed.totalTests === 'number' ? parsed.totalTests : parsedCases.length,
-                            testResults: Array.isArray(parsed.testResults) ? parsed.testResults : [],
+                            totalPassedTests,
+                            totalTests,
+                            testResults: sanitizedTestResults,
                         });
                         return;
                     } catch {
@@ -659,7 +808,29 @@ async function _runPythonProcess(codeOrPayload, rawTestCases = []) {
                     error: stderr.trim() || 'Nəticə oxunarkən xəta baş verdi.',
                     totalPassedTests: 0,
                     totalTests: parsedCases.length,
-                    testResults: [],
+                    testResults: parsedCases.map((tc, idx) => {
+                        const isHidden = Boolean(tc.isHidden);
+                        const testNum = idx + 1;
+                        if (isHidden) {
+                            return {
+                                index: testNum,
+                                testNum,
+                                isHidden: true,
+                                passed: false,
+                                executionTimeMs: 0,
+                            };
+                        }
+                        return {
+                            index: testNum,
+                            testNum,
+                            input: String(tc.input || ''),
+                            expected: String(tc.expectedOutput || tc.expected_output || ''),
+                            actual: '(icra xətası)',
+                            passed: false,
+                            executionTimeMs: 0,
+                            isHidden: false,
+                        };
+                    }),
                 });
             });
         });

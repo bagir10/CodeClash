@@ -60,24 +60,12 @@ Nümunə 2:
 Giriş: nums = [3, 2, 4], target = 6
 Çıxış: [1, 2]',
     'def solution(nums, target):
-    # nums: List[int], target: int -> List[int]
-    seen = {}
-    for idx, num in enumerate(nums):
-        diff = target - num
-        if diff in seen:
-            return [seen[diff], idx]
-        seen[num] = idx
-    return []
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums, target):
-    # nums: List[int], target: int -> List[int]
-    seen = {}
-    for idx, num in enumerate(nums):
-        diff = target - num
-        if diff in seen:
-            return [seen[diff], idx]
-        seen[num] = idx
-    return []
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[2, 7, 11, 15], 9","expectedOutput":"[0, 1]"},{"input":"[3, 2, 4], 6","expectedOutput":"[1, 2]"}]'::jsonb,
     '[{"input":"[3, 3], 6","expectedOutput":"[0, 1]"},{"input":"[-1, -2, -3, -4, -5], -8","expectedOutput":"[2, 4]"},{"input":"[0, 4, 3, 0], 0","expectedOutput":"[0, 3]"},{"input":"[1, 5, 8, 12, 19], 20","expectedOutput":"[0, 4]"}]'::jsonb,
@@ -117,16 +105,12 @@ Nümunə:
 Giriş: [0, 1, 0, 3, 12]
 Çıxış: [1, 3, 12, 0, 0]',
     'def solution(nums):
-    # nums: List[int] -> List[int]
-    res = [x for x in nums if x != 0]
-    res += [0] * (len(nums) - len(res))
-    return res
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums):
-    # nums: List[int] -> List[int]
-    res = [x for x in nums if x != 0]
-    res += [0] * (len(nums) - len(res))
-    return res
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[0, 1, 0, 3, 12]","expectedOutput":"[1, 3, 12, 0, 0]"},{"input":"[0]","expectedOutput":"[0]"}]'::jsonb,
     '[{"input":"[1, 2, 3]","expectedOutput":"[1, 2, 3]"},{"input":"[0, 0, 0, 1]","expectedOutput":"[1, 0, 0, 0]"},{"input":"[4, 0, 5, 0, 6, 0]","expectedOutput":"[4, 5, 6, 0, 0, 0]"}]'::jsonb,
@@ -170,12 +154,12 @@ Nümunə 2:
 Giriş: [1, 2, 3, 4]
 Çıxış: False',
     'def solution(nums):
-    # nums: List[int] -> bool
-    return len(nums) != len(set(nums))
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums):
-    # nums: List[int] -> bool
-    return len(nums) != len(set(nums))
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[1, 2, 3, 1]","expectedOutput":"True"},{"input":"[1, 2, 3, 4]","expectedOutput":"False"}]'::jsonb,
     '[{"input":"[1, 1, 1, 3, 3, 4, 3, 2, 4, 2]","expectedOutput":"True"},{"input":"[]","expectedOutput":"False"},{"input":"[100]","expectedOutput":"False"},{"input":"[-5, -4, -3, -2, -1]","expectedOutput":"False"}]'::jsonb,
@@ -215,22 +199,12 @@ Nümunə:
 Giriş: [-2, 1, -3, 4, -1, 2, 1, -5, 4]
 Çıxış: 6  (Çünki [4, -1, 2, 1] alt massivinin cəmi 6-dır)',
     'def solution(nums):
-    # nums: List[int] -> int
-    max_so_far = nums[0]
-    curr_max = nums[0]
-    for x in nums[1:]:
-        curr_max = max(x, curr_max + x)
-        max_so_far = max(max_so_far, curr_max)
-    return max_so_far
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums):
-    # nums: List[int] -> int
-    max_so_far = nums[0]
-    curr_max = nums[0]
-    for x in nums[1:]:
-        curr_max = max(x, curr_max + x)
-        max_so_far = max(max_so_far, curr_max)
-    return max_so_far
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[-2, 1, -3, 4, -1, 2, 1, -5, 4]","expectedOutput":"6"},{"input":"[1]","expectedOutput":"1"}]'::jsonb,
     '[{"input":"[5, 4, -1, 7, 8]","expectedOutput":"23"},{"input":"[-5, -2, -8, -1]","expectedOutput":"-1"},{"input":"[-10, 2, 3, -1, 5, -2]","expectedOutput":"9"}]'::jsonb,
@@ -270,16 +244,12 @@ Nümunə:
 Giriş: [3, 0, 1]
 Çıxış: 2 (Aralıq 0-3, 2 çatışmır)',
     'def solution(nums):
-    # nums: List[int] -> int
-    n = len(nums)
-    expected_sum = n * (n + 1) // 2
-    return expected_sum - sum(nums)
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums):
-    # nums: List[int] -> int
-    n = len(nums)
-    expected_sum = n * (n + 1) // 2
-    return expected_sum - sum(nums)
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[3, 0, 1]","expectedOutput":"2"},{"input":"[0, 1]","expectedOutput":"2"}]'::jsonb,
     '[{"input":"[9, 6, 4, 2, 3, 5, 7, 0, 1]","expectedOutput":"8"},{"input":"[0]","expectedOutput":"1"},{"input":"[1]","expectedOutput":"0"},{"input":"[0, 2, 3, 4, 5]","expectedOutput":"1"}]'::jsonb,
@@ -319,30 +289,12 @@ Nümunə:
 Giriş: [7, 1, 5, 3, 6, 4]
 Çıxış: 5 (2-ci gün 1-ə alıb 5-ci gün 6-ya satmaqla 6-1=5 qazanc)',
     'def solution(prices):
-    # prices: List[int] -> int
-    if not prices:
-        return 0
-    min_price = float(''inf'')
-    max_profit = 0
-    for price in prices:
-        if price < min_price:
-            min_price = price
-        elif price - min_price > max_profit:
-            max_profit = price - min_price
-    return max_profit
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(prices):
-    # prices: List[int] -> int
-    if not prices:
-        return 0
-    min_price = float(''inf'')
-    max_profit = 0
-    for price in prices:
-        if price < min_price:
-            min_price = price
-        elif price - min_price > max_profit:
-            max_profit = price - min_price
-    return max_profit
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[7, 1, 5, 3, 6, 4]","expectedOutput":"5"},{"input":"[7, 6, 4, 3, 1]","expectedOutput":"0"}]'::jsonb,
     '[{"input":"[1, 2]","expectedOutput":"1"},{"input":"[2, 4, 1]","expectedOutput":"2"},{"input":"[3, 3, 3, 3]","expectedOutput":"0"},{"input":"[2, 1, 2, 0, 1]","expectedOutput":"1"}]'::jsonb,
@@ -386,20 +338,12 @@ Nümunə 2:
 Giriş: [1, 2], [3, 4]
 Çıxış: 2.5 (Ortadakı 2 və 3-ün ədədi ortası)',
     'def solution(nums1, nums2):
-    # nums1: List[int], nums2: List[int] -> float
-    merged = sorted(nums1 + nums2)
-    n = len(merged)
-    if n % 2 == 1:
-        return float(merged[n // 2])
-    return (merged[n // 2 - 1] + merged[n // 2]) / 2.0
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums1, nums2):
-    # nums1: List[int], nums2: List[int] -> float
-    merged = sorted(nums1 + nums2)
-    n = len(merged)
-    if n % 2 == 1:
-        return float(merged[n // 2])
-    return (merged[n // 2 - 1] + merged[n // 2]) / 2.0
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[1, 3], [2]","expectedOutput":"2.0"},{"input":"[1, 2], [3, 4]","expectedOutput":"2.5"}]'::jsonb,
     '[{"input":"[0, 0], [0, 0]","expectedOutput":"0.0"},{"input":"[], [1]","expectedOutput":"1.0"},{"input":"[2], []","expectedOutput":"2.0"},{"input":"[1, 5, 9], [2, 6, 10]","expectedOutput":"5.5"}]'::jsonb,
@@ -439,14 +383,12 @@ Nümunə:
 Giriş: "A man, a plan, a canal: Panama"
 Çıxış: True',
     'def solution(s):
-    # s: str -> bool
-    cleaned = ''''.join(c.lower() for c in str(s) if c.isalnum())
-    return cleaned == cleaned[::-1]
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(s):
-    # s: str -> bool
-    cleaned = ''''.join(c.lower() for c in str(s) if c.isalnum())
-    return cleaned == cleaned[::-1]
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"\"A man, a plan, a canal: Panama\"","expectedOutput":"True"},{"input":"\"race a car\"","expectedOutput":"False"}]'::jsonb,
     '[{"input":"\" \"","expectedOutput":"True"},{"input":"\"0P\"","expectedOutput":"False"},{"input":"\"radar\"","expectedOutput":"True"},{"input":"\"No lemon, no melon\"","expectedOutput":"True"}]'::jsonb,
@@ -490,12 +432,12 @@ Nümunə 2:
 Giriş: "rat", "car"
 Çıxış: False',
     'def solution(s, t):
-    # s: str, t: str -> bool
-    return sorted(str(s)) == sorted(str(t))
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(s, t):
-    # s: str, t: str -> bool
-    return sorted(str(s)) == sorted(str(t))
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"\"anagram\", \"nagaram\"","expectedOutput":"True"},{"input":"\"rat\", \"car\"","expectedOutput":"False"}]'::jsonb,
     '[{"input":"\"listen\", \"silent\"","expectedOutput":"True"},{"input":"\"a\", \"ab\"","expectedOutput":"False"},{"input":"\"hello\", \"world\"","expectedOutput":"False"},{"input":"\"abcc\", \"bcac\"","expectedOutput":"True"}]'::jsonb,
@@ -535,28 +477,12 @@ Nümunə:
 Giriş: ["flower", "flow", "flight"]
 Çıxış: "fl"',
     'def solution(strs):
-    # strs: List[str] -> str
-    if not strs:
-        return ""
-    prefix = strs[0]
-    for s in strs[1:]:
-        while not s.startswith(prefix):
-            prefix = prefix[:-1]
-            if not prefix:
-                return ""
-    return prefix
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(strs):
-    # strs: List[str] -> str
-    if not strs:
-        return ""
-    prefix = strs[0]
-    for s in strs[1:]:
-        while not s.startswith(prefix):
-            prefix = prefix[:-1]
-            if not prefix:
-                return ""
-    return prefix
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[\"flower\", \"flow\", \"flight\"]","expectedOutput":"\"fl\""},{"input":"[\"dog\", \"racecar\", \"car\"]","expectedOutput":"\"\""}]'::jsonb,
     '[{"input":"[\"interspecies\", \"interstellar\", \"interstate\"]","expectedOutput":"\"inters\""},{"input":"[\"throne\", \"throne\"]","expectedOutput":"\"throne\""},{"input":"[\"a\"]","expectedOutput":"\"a\""}]'::jsonb,
@@ -596,14 +522,12 @@ Nümunə:
 Giriş: "  the sky is   blue  "
 Çıxış: "blue is sky the"',
     'def solution(s):
-    # s: str -> str
-    words = s.strip().split()
-    return " ".join(reversed(words))
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(s):
-    # s: str -> str
-    words = s.strip().split()
-    return " ".join(reversed(words))
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"\"  the sky is   blue  \"","expectedOutput":"\"blue is sky the\""},{"input":"\"hello world\"","expectedOutput":"\"world hello\""}]'::jsonb,
     '[{"input":"\"a good   example\"","expectedOutput":"\"example good a\""},{"input":"\"Bob\"","expectedOutput":"\"Bob\""},{"input":"\"   one   two   three   \"","expectedOutput":"\"three two one\""}]'::jsonb,
@@ -643,36 +567,12 @@ Nümunə:
 Giriş: "aabcccccaaa"
 Çıxış: "a2b1c5a3"',
     'def solution(s):
-    # s: str -> str
-    if not s:
-        return ""
-    compressed = []
-    count = 1
-    for i in range(1, len(s)):
-        if s[i] == s[i - 1]:
-            count += 1
-        else:
-            compressed.append(f"{s[i-1]}{count}")
-            count = 1
-    compressed.append(f"{s[-1]}{count}")
-    res = "".join(compressed)
-    return res if len(res) < len(s) else s
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(s):
-    # s: str -> str
-    if not s:
-        return ""
-    compressed = []
-    count = 1
-    for i in range(1, len(s)):
-        if s[i] == s[i - 1]:
-            count += 1
-        else:
-            compressed.append(f"{s[i-1]}{count}")
-            count = 1
-    compressed.append(f"{s[-1]}{count}")
-    res = "".join(compressed)
-    return res if len(res) < len(s) else s
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"\"aabcccccaaa\"","expectedOutput":"\"a2b1c5a3\""},{"input":"\"abc\"","expectedOutput":"\"abc\""}]'::jsonb,
     '[{"input":"\"aaaaaaaaaa\"","expectedOutput":"\"a10\""},{"input":"\"aabbcc\"","expectedOutput":"\"aabbcc\""},{"input":"\"wwwwaaadexxxxxx\"","expectedOutput":"\"w4a3d1e1x6\""}]'::jsonb,
@@ -716,22 +616,12 @@ Nümunə 2:
 Giriş: "loveleetcode"
 Çıxış: 2 (''v'' simvolu)',
     'def solution(s):
-    # s: str -> int
-    from collections import Counter
-    counts = Counter(s)
-    for idx, ch in enumerate(s):
-        if counts[ch] == 1:
-            return idx
-    return -1
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(s):
-    # s: str -> int
-    from collections import Counter
-    counts = Counter(s)
-    for idx, ch in enumerate(s):
-        if counts[ch] == 1:
-            return idx
-    return -1
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"\"leetcode\"","expectedOutput":"0"},{"input":"\"loveleetcode\"","expectedOutput":"2"}]'::jsonb,
     '[{"input":"\"aabb\"","expectedOutput":"-1"},{"input":"\"z\"","expectedOutput":"0"},{"input":"\"aadadaad\"","expectedOutput":"-1"}]'::jsonb,
@@ -775,28 +665,12 @@ Nümunə 2:
 Giriş: "bbbbb"
 Çıxış: 1 ("b")',
     'def solution(s):
-    # s: str -> int
-    used = {}
-    max_len = 0
-    left = 0
-    for right, ch in enumerate(s):
-        if ch in used and used[ch] >= left:
-            left = used[ch] + 1
-        used[ch] = right
-        max_len = max(max_len, right - left + 1)
-    return max_len
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(s):
-    # s: str -> int
-    used = {}
-    max_len = 0
-    left = 0
-    for right, ch in enumerate(s):
-        if ch in used and used[ch] >= left:
-            left = used[ch] + 1
-        used[ch] = right
-        max_len = max(max_len, right - left + 1)
-    return max_len
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"\"abcabcbb\"","expectedOutput":"3"},{"input":"\"bbbbb\"","expectedOutput":"1"}]'::jsonb,
     '[{"input":"\"pwwkew\"","expectedOutput":"3"},{"input":"\"\"","expectedOutput":"0"},{"input":"\"dvdf\"","expectedOutput":"3"},{"input":"\"anviaj\"","expectedOutput":"5"}]'::jsonb,
@@ -836,22 +710,12 @@ Nümunə:
 Giriş: 5
 Çıxış: 120 (5 * 4 * 3 * 2 * 1)',
     'def solution(n):
-    # n: int -> int
-    if n <= 1:
-        return 1
-    total = 1
-    for i in range(2, n + 1):
-        total *= i
-    return total
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(n):
-    # n: int -> int
-    if n <= 1:
-        return 1
-    total = 1
-    for i in range(2, n + 1):
-        total *= i
-    return total
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"5","expectedOutput":"120"},{"input":"3","expectedOutput":"6"}]'::jsonb,
     '[{"input":"0","expectedOutput":"1"},{"input":"1","expectedOutput":"1"},{"input":"6","expectedOutput":"720"},{"input":"10","expectedOutput":"3628800"}]'::jsonb,
@@ -891,12 +755,12 @@ Nümunə:
 Giriş: 12345
 Çıxış: 15 (1 + 2 + 3 + 4 + 5)',
     'def solution(n):
-    # n: int -> int
-    return sum(int(d) for d in str(abs(n)))
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(n):
-    # n: int -> int
-    return sum(int(d) for d in str(abs(n)))
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"12345","expectedOutput":"15"},{"input":"0","expectedOutput":"0"}]'::jsonb,
     '[{"input":"999","expectedOutput":"27"},{"input":"10002","expectedOutput":"3"},{"input":"7","expectedOutput":"7"}]'::jsonb,
@@ -940,34 +804,12 @@ Nümunə 2:
 Giriş: 4
 Çıxış: False',
     'def solution(n):
-    # n: int -> bool
-    if n <= 1:
-        return False
-    if n <= 3:
-        return True
-    if n % 2 == 0 or n % 3 == 0:
-        return False
-    i = 5
-    while i * i <= n:
-        if n % i == 0 or n % (i + 2) == 0:
-            return False
-        i += 6
-    return True
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(n):
-    # n: int -> bool
-    if n <= 1:
-        return False
-    if n <= 3:
-        return True
-    if n % 2 == 0 or n % 3 == 0:
-        return False
-    i = 5
-    while i * i <= n:
-        if n % i == 0 or n % (i + 2) == 0:
-            return False
-        i += 6
-    return True
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"7","expectedOutput":"True"},{"input":"4","expectedOutput":"False"}]'::jsonb,
     '[{"input":"1","expectedOutput":"False"},{"input":"2","expectedOutput":"True"},{"input":"97","expectedOutput":"True"},{"input":"100","expectedOutput":"False"}]'::jsonb,
@@ -1008,26 +850,12 @@ Nümunə:
 Giriş: 6
 Çıxış: 8 (0, 1, 1, 2, 3, 5, 8)',
     'def solution(n):
-    # n: int -> int
-    if n <= 0:
-        return 0
-    if n == 1:
-        return 1
-    a, b = 0, 1
-    for _ in range(2, n + 1):
-        a, b = b, a + b
-    return b
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(n):
-    # n: int -> int
-    if n <= 0:
-        return 0
-    if n == 1:
-        return 1
-    a, b = 0, 1
-    for _ in range(2, n + 1):
-        a, b = b, a + b
-    return b
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"6","expectedOutput":"8"},{"input":"2","expectedOutput":"1"}]'::jsonb,
     '[{"input":"0","expectedOutput":"0"},{"input":"1","expectedOutput":"1"},{"input":"10","expectedOutput":"55"},{"input":"20","expectedOutput":"6765"}]'::jsonb,
@@ -1067,16 +895,12 @@ Nümunə:
 Giriş: 48, 18
 Çıxış: 6',
     'def solution(a, b):
-    # a: int, b: int -> int
-    while b:
-        a, b = b, a % b
-    return a
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(a, b):
-    # a: int, b: int -> int
-    while b:
-        a, b = b, a % b
-    return a
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"48, 18","expectedOutput":"6"},{"input":"20, 8","expectedOutput":"4"}]'::jsonb,
     '[{"input":"101, 103","expectedOutput":"1"},{"input":"100, 100","expectedOutput":"100"},{"input":"7, 49","expectedOutput":"7"},{"input":"270, 192","expectedOutput":"6"}]'::jsonb,
@@ -1118,32 +942,12 @@ Nümunə:
 Giriş: "MCMXCIV"
 Çıxış: 1994 (M=1000 + CM=900 + XC=90 + IV=4)',
     'def solution(s):
-    # s: str -> int
-    vals = {''I'': 1, ''V'': 5, ''X'': 10, ''L'': 50, ''C'': 100, ''D'': 500, ''M'': 1000}
-    total = 0
-    prev = 0
-    for ch in reversed(s):
-        curr = vals.get(ch, 0)
-        if curr >= prev:
-            total += curr
-        else:
-            total -= curr
-        prev = curr
-    return total
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(s):
-    # s: str -> int
-    vals = {''I'': 1, ''V'': 5, ''X'': 10, ''L'': 50, ''C'': 100, ''D'': 500, ''M'': 1000}
-    total = 0
-    prev = 0
-    for ch in reversed(s):
-        curr = vals.get(ch, 0)
-        if curr >= prev:
-            total += curr
-        else:
-            total -= curr
-        prev = curr
-    return total
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"\"MCMXCIV\"","expectedOutput":"1994"},{"input":"\"LVIII\"","expectedOutput":"58"}]'::jsonb,
     '[{"input":"\"III\"","expectedOutput":"3"},{"input":"\"IV\"","expectedOutput":"4"},{"input":"\"IX\"","expectedOutput":"9"},{"input":"\"XL\"","expectedOutput":"40"}]'::jsonb,
@@ -1187,32 +991,12 @@ Nümunə:
 Giriş: 5
 Çıxış: ["1", "2", "Fizz", "4", "Buzz"]',
     'def solution(n):
-    # n: int -> List[str]
-    res = []
-    for i in range(1, n + 1):
-        if i % 15 == 0:
-            res.append("FizzBuzz")
-        elif i % 3 == 0:
-            res.append("Fizz")
-        elif i % 5 == 0:
-            res.append("Buzz")
-        else:
-            res.append(str(i))
-    return res
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(n):
-    # n: int -> List[str]
-    res = []
-    for i in range(1, n + 1):
-        if i % 15 == 0:
-            res.append("FizzBuzz")
-        elif i % 3 == 0:
-            res.append("Fizz")
-        elif i % 5 == 0:
-            res.append("Buzz")
-        else:
-            res.append(str(i))
-    return res
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"5","expectedOutput":"[\"1\", \"2\", \"Fizz\", \"4\", \"Buzz\"]"},{"input":"3","expectedOutput":"[\"1\", \"2\", \"Fizz\"]"}]'::jsonb,
     '[{"input":"1","expectedOutput":"[\"1\"]"},{"input":"15","expectedOutput":"[\"1\", \"2\", \"Fizz\", \"4\", \"Buzz\", \"Fizz\", \"7\", \"8\", \"Fizz\", \"Buzz\", \"11\", \"Fizz\", \"13\", \"14\", \"FizzBuzz\"]"},{"input":"6","expectedOutput":"[\"1\", \"2\", \"Fizz\", \"4\", \"Buzz\", \"Fizz\"]"}]'::jsonb,
@@ -1252,18 +1036,12 @@ Nümunə:
 Giriş: [4, 1, 2, 1, 2]
 Çıxış: 4',
     'def solution(nums):
-    # nums: List[int] -> int
-    res = 0
-    for x in nums:
-        res ^= x
-    return res
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums):
-    # nums: List[int] -> int
-    res = 0
-    for x in nums:
-        res ^= x
-    return res
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[4, 1, 2, 1, 2]","expectedOutput":"4"},{"input":"[2, 2, 1]","expectedOutput":"1"}]'::jsonb,
     '[{"input":"[1]","expectedOutput":"1"},{"input":"[-1, -1, -2]","expectedOutput":"-2"},{"input":"[10, 20, 30, 20, 10]","expectedOutput":"30"}]'::jsonb,
@@ -1308,20 +1086,12 @@ Giriş: 2000 -> Çıxış: True
 Nümunə 2:
 Giriş: 1900 -> Çıxış: False',
     'def solution(year):
-    # year: int -> bool
-    if year % 400 == 0:
-        return True
-    if year % 100 == 0:
-        return False
-    return year % 4 == 0
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(year):
-    # year: int -> bool
-    if year % 400 == 0:
-        return True
-    if year % 100 == 0:
-        return False
-    return year % 4 == 0
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"2000","expectedOutput":"True"},{"input":"1900","expectedOutput":"False"}]'::jsonb,
     '[{"input":"2024","expectedOutput":"True"},{"input":"2023","expectedOutput":"False"},{"input":"2400","expectedOutput":"True"},{"input":"1800","expectedOutput":"False"}]'::jsonb,
@@ -1361,20 +1131,12 @@ Nümunə:
 Giriş: 11 (İkilik təsviri: 1011)
 Çıxış: 3',
     'def solution(n):
-    # n: int -> int
-    count = 0
-    while n:
-        n &= (n - 1)
-        count += 1
-    return count
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(n):
-    # n: int -> int
-    count = 0
-    while n:
-        n &= (n - 1)
-        count += 1
-    return count
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"11","expectedOutput":"3"},{"input":"128","expectedOutput":"1"}]'::jsonb,
     '[{"input":"0","expectedOutput":"0"},{"input":"15","expectedOutput":"4"},{"input":"2147483645","expectedOutput":"30"}]'::jsonb,
@@ -1414,30 +1176,12 @@ Nümunə:
 Giriş: [1, 8, 6, 2, 5, 4, 8, 3, 7]
 Çıxış: 49 (İndeks 1 (hündürlük 8) və indeks 8 (hündürlük 7) arasında: min(8, 7) * (8 - 1) = 49)',
     'def solution(height):
-    # height: List[int] -> int
-    left, right = 0, len(height) - 1
-    max_area = 0
-    while left < right:
-        h = min(height[left], height[right])
-        max_area = max(max_area, h * (right - left))
-        if height[left] < height[right]:
-            left += 1
-        else:
-            right -= 1
-    return max_area
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(height):
-    # height: List[int] -> int
-    left, right = 0, len(height) - 1
-    max_area = 0
-    while left < right:
-        h = min(height[left], height[right])
-        max_area = max(max_area, h * (right - left))
-        if height[left] < height[right]:
-            left += 1
-        else:
-            right -= 1
-    return max_area
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[1, 8, 6, 2, 5, 4, 8, 3, 7]","expectedOutput":"49"},{"input":"[1, 1]","expectedOutput":"1"}]'::jsonb,
     '[{"input":"[4, 3, 2, 1, 4]","expectedOutput":"16"},{"input":"[1, 2, 1]","expectedOutput":"2"},{"input":"[2, 3, 4, 5, 18, 17, 6]","expectedOutput":"17"}]'::jsonb,
@@ -1477,30 +1221,12 @@ Nümunə:
 Giriş: nums = [-1, 0, 3, 5, 9, 12], target = 9
 Çıxış: 4',
     'def solution(nums, target):
-    # nums: List[int], target: int -> int
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums, target):
-    # nums: List[int], target: int -> int
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[-1, 0, 3, 5, 9, 12], 9","expectedOutput":"4"},{"input":"[-1, 0, 3, 5, 9, 12], 2","expectedOutput":"-1"}]'::jsonb,
     '[{"input":"[5], 5","expectedOutput":"0"},{"input":"[5], -5","expectedOutput":"-1"},{"input":"[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 10","expectedOutput":"9"},{"input":"[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 1","expectedOutput":"0"}]'::jsonb,
@@ -1540,24 +1266,12 @@ Nümunə:
 Giriş: [2, 2, 1, 1, 1, 2, 2]
 Çıxış: 2',
     'def solution(nums):
-    # nums: List[int] -> int
-    candidate = None
-    count = 0
-    for num in nums:
-        if count == 0:
-            candidate = num
-        count += (1 if num == candidate else -1)
-    return candidate
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums):
-    # nums: List[int] -> int
-    candidate = None
-    count = 0
-    for num in nums:
-        if count == 0:
-            candidate = num
-        count += (1 if num == candidate else -1)
-    return candidate
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[2, 2, 1, 1, 1, 2, 2]","expectedOutput":"2"},{"input":"[3, 2, 3]","expectedOutput":"3"}]'::jsonb,
     '[{"input":"[1]","expectedOutput":"1"},{"input":"[6, 5, 5]","expectedOutput":"5"},{"input":"[10, 9, 9, 9, 10]","expectedOutput":"9"}]'::jsonb,
@@ -1597,22 +1311,12 @@ Nümunə:
 Giriş: nums = [1, 2, 3, 4, 5, 6, 7], k = 3
 Çıxış: [5, 6, 7, 1, 2, 3, 4]',
     'def solution(nums, k):
-    # nums: List[int], k: int -> List[int]
-    if not nums:
-        return []
-    k = k % len(nums)
-    if k == 0:
-        return nums
-    return nums[-k:] + nums[:-k]
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(nums, k):
-    # nums: List[int], k: int -> List[int]
-    if not nums:
-        return []
-    k = k % len(nums)
-    if k == 0:
-        return nums
-    return nums[-k:] + nums[:-k]
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[1, 2, 3, 4, 5, 6, 7], 3","expectedOutput":"[5, 6, 7, 1, 2, 3, 4]"},{"input":"[-1, -100, 3, 99], 2","expectedOutput":"[3, 99, -1, -100]"}]'::jsonb,
     '[{"input":"[1, 2], 3","expectedOutput":"[2, 1]"},{"input":"[1], 0","expectedOutput":"[1]"},{"input":"[1, 2, 3, 4], 4","expectedOutput":"[1, 2, 3, 4]"}]'::jsonb,
@@ -1652,24 +1356,12 @@ Nümunə:
 Giriş: "abbaca"
 Çıxış: "ca" (Əvvəl "bb" silinir -> "aaca", sonra "aa" silinir -> "ca")',
     'def solution(s):
-    # s: str -> str
-    stack = []
-    for ch in s:
-        if stack and stack[-1] == ch:
-            stack.pop()
-        else:
-            stack.append(ch)
-    return "".join(stack)
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(s):
-    # s: str -> str
-    stack = []
-    for ch in s:
-        if stack and stack[-1] == ch:
-            stack.pop()
-        else:
-            stack.append(ch)
-    return "".join(stack)
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"\"abbaca\"","expectedOutput":"\"ca\""},{"input":"\"azxxzy\"","expectedOutput":"\"ay\""}]'::jsonb,
     '[{"input":"\"aababaab\"","expectedOutput":"\"ba\""},{"input":"\"aaaaaaaa\"","expectedOutput":"\"\""},{"input":"\"abcdef\"","expectedOutput":"\"abcdef\""}]'::jsonb,
@@ -1709,32 +1401,12 @@ Nümunə:
 Giriş: [[1, 3], [2, 6], [8, 10], [15, 18]]
 Çıxış: [[1, 6], [8, 10], [15, 18]] ([1,3] və [2,6] kəsişir -> [1,6])',
     'def solution(intervals):
-    # intervals: List[List[int]] -> List[List[int]]
-    if not intervals:
-        return []
-    intervals.sort(key=lambda x: x[0])
-    merged = [intervals[0]]
-    for curr in intervals[1:]:
-        prev = merged[-1]
-        if curr[0] <= prev[1]:
-            prev[1] = max(prev[1], curr[1])
-        else:
-            merged.append(curr)
-    return merged
+    # Kodunuzu bura yazın
+    pass
 ',
     'def solution(intervals):
-    # intervals: List[List[int]] -> List[List[int]]
-    if not intervals:
-        return []
-    intervals.sort(key=lambda x: x[0])
-    merged = [intervals[0]]
-    for curr in intervals[1:]:
-        prev = merged[-1]
-        if curr[0] <= prev[1]:
-            prev[1] = max(prev[1], curr[1])
-        else:
-            merged.append(curr)
-    return merged
+    # Kodunuzu bura yazın
+    pass
 ',
     '[{"input":"[[1, 3], [2, 6], [8, 10], [15, 18]]","expectedOutput":"[[1, 6], [8, 10], [15, 18]]"},{"input":"[[1, 4], [4, 5]]","expectedOutput":"[[1, 5]]"}]'::jsonb,
     '[{"input":"[[6, 8], [1, 9], [2, 4], [4, 7]]","expectedOutput":"[[1, 9]]"},{"input":"[[1, 4], [0, 4]]","expectedOutput":"[[0, 4]]"},{"input":"[[1, 4], [2, 3]]","expectedOutput":"[[1, 4]]"}]'::jsonb,
